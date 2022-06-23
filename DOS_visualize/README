@@ -1,0 +1,49 @@
+This document aims to describe how to use the DOS_visualize script
+
+The user can directly use the DOS_visualize script or create a second script to import 
+the DOS_visualize class. After importing and instantiating the class the user will need to run the 
+plot_dos command on the DOS_visualize instance.
+
+The DOS_visualize object is instantiated with the input files and the types of DOS's you want to plot.
+One subplot is created per jdos file. Currently the script does not re-plotting the same jdos file. 
+It can be worked around by making a copy of the file and naming it something different.
+
+The jdos files are generated from the dosUp and dosDn files output from a JDFTx singlepoint calculation.
+It is recommended to create the jdos files from the desired dosUp and dosDn files in a node computer and then
+run the python script locally to plot. The plots cannot be run on CU Bouler's Alpine because MatPlotLib is missing
+a required package to save figures.
+
+The way the class is instantiated selects which files to scan through, elements/atoms, and orbitals to plot.
+the files are specified in a list: files=['practice.json','practice_2.json']
+
+The atoms are then specified in a nested list, where the parent list corresponds to each file and the child list
+corresponds to which atoms should be plotted from that file. Specifiy an atomic symbol without a number will plot 
+the pDOS of every atom of that element. For example: Ar_1 plots the pDOS of the first Ar atom in the JDFTx output files,
+but Ar plots the pDOS of every argon atom in the unit cell.
+
+If one wanted to plot all the Na and Cl atoms separately it would look like this:
+Atoms=[['Na'],['Cl']]
+There is also the option to use 'Total', which will plot the entire DOS for the material without projecting onto 
+certain sites.
+
+Orbitals can also be specified. If you want to plot all the orbitals of a specific atom/element, set orbitals as 'all'
+There is currently no default for this so if orbitals are not specified, the script will break.
+
+Orbitals are specified in a twice nested list where the grandparent is the file, the parent is the atom and the child is the orbital.
+Accepted orbitals are: ['s','p','d','f','s','px','py','pz','dxy','dxz','dyz','dz2','dx2-y2','fy3','fz3','fx3','fyz2-x2','fzx2-y2','fxz2-y2','fxyz'] 
+or ['all']
+
+to plot all the Na atoms' s orbitals and all of the first chlorine atom's orbitals from practice.json, the command would look like this:
+DOS_visualize(file=['NaCl.json'], Atoms=[['Na','Cl_1']], orbitals=[[['s'],['all']]])
+
+
+An example script is shown below:
+
+from DOS_visualize import DOS_visualize
+
+dos = DOS_visualize(files=['practice.json'], 
+                           Atoms=[['Ir']],
+                            orbitals=[['s','d']],
+                            path='C:/Users/user/github/JDFT_tools/DOS_visualize'
+                            )
+dos.plot_dos()

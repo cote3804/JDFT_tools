@@ -12,8 +12,6 @@ from pymatgen.electronic_structure import dos
 from pymatgen.electronic_structure.core import Spin
 import numpy as np
 
-import sys
-sys.path.append('C:/Userscoopy/OneDrive - UCB-O365/Research/my_scripts/DOS')
 
 from dos_helper import set_rc_params, get_plot, fill_zeros
 set_rc_params()
