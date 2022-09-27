@@ -58,17 +58,17 @@ class Pathway:
                             'HER':
                           {'pathway' : ['H'],
                            'protons' : [1],
-                           'molecules' : [['']],
-                           'entropy' : {'H3O': 0.035438, 'H2O': 0.021586,
-                                        'H2': 0.014789719},
+                           'molecules' : [{}],
+                           'entropy' : {'H3O': 0.0218925, 'H2O': 0.0214048,
+                                        'H2': 0.01483246506},
                            'ZPE' : {'H3O': 0.035438, 'H2O': 0.021586,
                                     'H2': 0.010088},
                            'initial_state' : {'molecules' : None,
                                               'protons' : 2,
-                                              'label' : '$2H^+$'},
+                                              'label' : '2H+'},
                            'final_state' : {'molecules' : {'H2' : 1},
                                               'protons' : 0,
-                                              'label' : '$H_2$'}
+                                              'label' : 'H2'}
                            },
                           
                           'CO2R':
@@ -82,19 +82,27 @@ class Pathway:
                                                   'protons' : 0,
                                                   'label' : 'CO (aq)'},
                                   
-                                  }
+                                  },
                              
-            
+                            'molecules' : {'H2O' : {'-1.00' : -16.20500972}}
             
             }
         self.potentials = {'0.00': -0.1713, '-0.25': -0.1621, '-0.50': -0.1529}
         
     def set_reaction_data(self, reaction_data_entry, reaction_name):
         self.reaction_data[reaction_name] = reaction_data_entry
-        
+        #TODO add functionality to add custom reaction_data entries
         
     def get_reaction_data(self):
         pprint.pprint(self.reaction_data)
+        
+    def get_materials(self):
+        #returns a list of the materials input for the instance of this class
+        materials = []
+        for ipath in range(len(self.pathways.keys())):
+            path_list = self.pathways[ipath]
+            materials.append(path_list[0])
+        return materials
         
     def get_json(self):
         '''
@@ -116,16 +124,45 @@ class Pathway:
         
         energy= []
         step = []
-        for intermediate in adsorbates: 
-            if intermediate in all_data[material]['adsorbed'].keys() and all_data[material]['adsorbed'][intermediate][f'{bias}V'][f'0{site}']['converged']:
-                energy.append(all_data[material]['adsorbed'][intermediate][f'{bias}V'][f'0{site}']['final_energy'])
-                step.append(f'{intermediate}*')
-            else:
-                raise Exception(f'intermediate {intermediate}* at bias {bias}V ' 
-                                f'and site 0{site} on {material} not in all_data.json. '
-                                f'Check to see if it\'s converged')
-        energy, step = self.reaction_references(all_data, energy, step, material, 
-                                                adsorbates, bias, site, free_energy, proton)        
+        
+        if type(site) == int:
+            ## If user enters a specific site, calculate energies at that site ##
+            for intermediate in adsorbates: 
+                if intermediate in all_data[material]['adsorbed'].keys() and all_data[material]['adsorbed'][intermediate][f'{bias}V'][f'0{site}']['converged']:
+                    energy.append(all_data[material]['adsorbed'][intermediate][f'{bias}V'][f'0{site}']['final_energy'])
+                    step.append(f'{intermediate}*')
+                else:
+                    raise Exception(f'intermediate {intermediate}* at bias {bias}V ' 
+                                    f'and site 0{site} on {material} not in all_data.json. '
+                                    f'Check to see if it\'s converged')
+            energy, step = self.reaction_references(all_data, energy, step, material, 
+                                                    adsorbates, bias, site, free_energy, proton) 
+        elif site == 'min':
+            ## If user enters 'min', search all sites for minimum E value ##
+            for intermediate in adsorbates: 
+                if intermediate in all_data[material]['adsorbed'].keys():
+                    E_old = 0
+                    for sites in all_data[material]['adsorbed'][intermediate][f'{bias}V'].keys():
+                        if all_data[material]['adsorbed'][intermediate][f'{bias}V'][sites]['converged']:
+                            E_new = all_data[material]['adsorbed'][intermediate][f'{bias}V'][sites]['final_energy']
+                        if E_new < E_old:
+                            E_old = E_new
+                            # print(intermediate,sites,E_old)
+                    if E_old == 0:
+                        raise Exception(f'No sites converged for intermediate {intermediate} ' 
+                                        f'on material {material} '
+                                        f'at bias {bias}.')
+                    energy.append(E_old)
+                    step.append(f'{intermediate}*')
+                else:
+                    raise Exception(f'intermediate {intermediate}* at bias {bias}V ' 
+                                    f'on {material} not in all_data.json. '
+                                    f'Check to see if it\'s converged')
+            energy, step = self.reaction_references(all_data, energy, step, material, 
+                                                adsorbates, bias, site, free_energy, proton) 
+        else:
+            raise Exception(f'site must be either an integer or "min." {site} was entered')
+        
         if ev:
             energy = list(np.array(energy)*27.2114)
         #Set reference point to final state
@@ -140,11 +177,11 @@ class Pathway:
         #calculated from H3O+ - H2O. Calculation can be found in Cooper's projects/
         #directory /projects/cote3804/proton_energy
         if proton == 'smart': #use solution proton reference
-            E_proton = -17.7048336646746769 - (-17.2809934718248783) 
+            E_proton = -16.329628244044773 - (-15.910602945824175)
         elif proton == 'stupid':
             E_proton = (1/2) * all_data['H2'][f'{bias}V']['final_energy']
         S_proton = 0.000487715
-        ZPE_proton = 0.013852
+        # ZPE_proton = 0.013852
         
         #===================================================================#
         #Set up a list of tuples that define the starting and ending state for the
@@ -178,14 +215,17 @@ class Pathway:
             for molecule,quantity in initial_mols: #looping over both values in tuple list to get molecule names and quantities
                 initial_mol_energy += quantity*all_data[molecule][f'{bias}V']['final_energy']
                 if free_energy:
-                    initial_mol_energy -= quantity * self.reaction_data['entropy'][molecule]
+                    initial_mol_energy -= quantity * self.reaction_data[self.reaction]['entropy'][molecule]
         if final_mols is None:
             final_mol_energy = 0
         else: 
             for molecule,quantity in final_mols:
-                final_mol_energy += quantity*all_data[molecule][f'{bias}V']['final_energy']
+                try:
+                    final_mol_energy += quantity*all_data[molecule][f'{bias}V']['final_energy']
+                except:
+                    final_mol_energy += quantity*self.reaction_data['molecules'][molecule][bias]
                 if free_energy:
-                    initial_mol_energy -= quantity * self.reaction_data['entropy'][molecule]
+                    final_mol_energy -= quantity * self.reaction_data[self.reaction]['entropy'][molecule]
         
         initial_total_energy = clean_surf_energy + initial_mol_energy + self.reaction_data[self.reaction]['initial_state']['protons'] * E_proton
         final_total_energy = clean_surf_energy + final_mol_energy + self.reaction_data[self.reaction]['final_state']['protons'] * E_proton
@@ -211,7 +251,7 @@ class Pathway:
             adsorbate_energy = energy
             proton_energy = proton_number[path_index] * E_proton
             if free_energy:
-                proton_energy = proton_energy + proton_number[path_index]*(ZPE_proton - S_proton)
+                proton_energy = proton_energy #+ proton_number[path_index]*(ZPE_proton - S_proton)
                 #ZPE and Entropy 
                 # proton_energy = proton_energy + proton_number[path_index]*(-S_proton)
             if bool(molecule_dicts[path_index]) is False:
@@ -219,7 +259,10 @@ class Pathway:
             else:
                 for molecule in molecule_dicts[path_index].keys():
                     molecule_quantity = molecule_dicts[path_index][molecule]
-                    molecule_energy = molecule_quantity * all_data[molecule][f'{bias}V']['final_energy']
+                    try:
+                        molecule_energy = molecule_quantity * all_data[molecule][f'{bias}V']['final_energy']
+                    except: #use included values in reaction_data if value not in json
+                        molecule_energy = molecule_quantity * self.reaction_data['molecules'][molecule][bias]
                     if free_energy and molecule in entropy.keys():
                         # molecule_energy = molecule_energy + molecule_quantity*(ZPE[molecule] - entropy[molecule])
                         #ZPE and Entropy
@@ -227,6 +270,7 @@ class Pathway:
                         #Entropy alone
                         #TODO decide whether or not to implement ZPE
             energies[i] = adsorbate_energy + proton_energy + molecule_energy
+            # print(adsorbate_energy, proton_energy, molecule_energy)
             i+=1
           #==================================================================# 
         energies.insert(0,initial_total_energy)
@@ -287,6 +331,8 @@ class Pathway:
         energies_dict = {}
         for ipath in range(len(self.pathways.keys())):
             path_list = self.pathways[ipath]
+            #calculate energies and create list of intermediates using the parameters
+            #added by add_pathway().
             energies, steps = self.get_energy(path_list[0],path_list[1],path_list[2],path_list[3],
                                               free_energy=path_list[4],ev=ev,proton=path_list[5])
             energy_dict = {}
@@ -295,27 +341,76 @@ class Pathway:
             energies_dict[path_list[0]] = energy_dict
         return energies_dict
     
-    def adatom_energy(self, all_data, material, site, bias='0.00', ev=True):
+    def get_adatom_energies(self):
         H_to_ev = 27.2114
-        E_proton = -17.7048336646746769 - (-17.2809934718248783)
-        if self.reaction == 'N2R':
-            adatom= 'N'
-        else:
-            pass
-        #TODO add more reaction support
-        molecular_energy = (all_data['N2'][f'{bias}V']['final_energy'] #N2 molecule
-                            +3*E_proton) #3 protons
-        adsorbate_energy = (all_data[material]['adsorbed'][adatom][f'{bias}V'][f'0{site}']['final_energy'] #adsorbate complex
-                            + all_data['NH3'][f'{bias}V']['final_energy'])
-        surface_energy = all_data[material]['surf'][f'{bias}V']['final_energy']
-        adatom_energy = adsorbate_energy - (surface_energy + molecular_energy)
+        E_proton = -16.329628244044773 - (-15.910602945824175)
+        adatom = 'N'
+        parameters_list = []
+        adatom_energies = {}
+        all_data = self.get_json()
+        for ipath in range(len(self.pathways.keys())):
+            path_list = self.pathways[ipath]
+            #get material, bias, site and free energy setting from parameters 
+            #input by user in add_pathway()
+            parameters_list.append(tuple([path_list[0], path_list[2], path_list[3], path_list[4]]))
+        #adatom energy calcualted as: N* - surface - 1/2(N2)
+        for material, bias, site, free_energy in parameters_list:
+            molecular_energy = (0.5*all_data['N2'][f'{bias}V']['final_energy'])
+            if type(site) is int:
+                adsorbate_energy = all_data[material]['adsorbed'][adatom][f'{bias}V'][f'0{site}']['final_energy'] #adsorbate complex
+            elif site == 'min': #search through all sites to find lowest energy configuration
+                E_old = 0
+                for sites in all_data[material]['adsorbed'][f'{adatom}'][f'{bias}V'].keys():
+                    if all_data[material]['adsorbed'][f'{adatom}'][f'{bias}V'][sites]['converged']:
+                        E_new = all_data[material]['adsorbed'][f'{adatom}'][f'{bias}V'][sites]['final_energy']
+                    if E_new < E_old:
+                        E_old = E_new
+                adsorbate_energy = E_old
+            surface_energy = all_data[material]['surf'][f'{bias}V']['final_energy']
+            adatom_energy = adsorbate_energy - (surface_energy + molecular_energy)
+            adatom_energies[material] = adatom_energy
+        #TODO add support beyond N2R
+            
+        return adatom_energies
+    
+    def get_limiting_energies(self):
+        sort_order = ['N2','N2*','N2H*','NNH2*','NNH3*','N*','NH*','NH2*','NH3*','2NH3']
+        energies = self.energies()
         
-        if ev:
-            adatom_energy = adatom_energy * H_to_ev
-        return adatom_energy
+        #build reaction order from energies
+        materials = [x for x in energies.keys()]
+
+        limiting_energies = {}
+        for material in energies.keys():
+            i = 0
+            reaction_order = []
+            for step in energies[material].keys():
+            #build reaction order from energies
+                reaction_order.append(step)
+            step_energy = 0 #start at zero for comparison logic
+            limiting_energies[material] = {}
+            for intermediate in energies[material]:
+                energy = energies[material][intermediate]
+                order_index = reaction_order.index(intermediate)
+                try:
+                    next_intermediate = reaction_order[order_index + 1]
+                except:
+                    continue
+                next_energy = energies[material][next_intermediate]
+                energy_change = next_energy - energy
+                
+                #logic to find maximum energy change between intermediates and store 
+                #highest value in step_energy
+                if energy_change > step_energy:
+                    step_energy = energy_change 
+                    key_string = f'{intermediate} -> {next_intermediate}'
+            limiting_energies[material] = tuple([key_string,step_energy])
+        return limiting_energies
+    
     
     
 if __name__ == '__main__':
+    #place test code below
     
     my_file = 'all_data.json'
     my_path = 'C:\\Users\\coopy\\OneDrive - UCB-O365\\Research\\N2R_Scaling'
@@ -345,10 +440,14 @@ if __name__ == '__main__':
     pathway = Pathway(path=aziz_path, filename='new_json.json', reaction='CO2R')
     all_data = pathway.get_json()
     # pathway.get_reaction_data()
-    pathway.add_pathway('Fe',['CO2','COOH','CO'],'-0.50',1,free_energy=False)
-    pathway.add_pathway('Ti',['CO2','COOH','CO'],'-0.50',1,free_energy=False)
-    pathway.add_pathway('Ni',['CO2','COOH','CO'],'-0.50',1,free_energy=False)
-    pathway.pathway_plot()
+    pathway.add_pathway('Ni',['CO2','COOH','CO'],'0.00',1,free_energy=False)
+    # pathway.add_pathway('Ni',['CO2','COOH','CO'],'-0.50',1,free_energy=False)
+    # pathway.add_pathway('Ni',['CO2','COOH','CO'],'-1.00',1,free_energy=False)
+    # pathway.add_pathway('Ti',['CO2','COOH','CO'],'-1.00',1,free_energy=False)
+    # pathway.add_pathway('Fe',['CO2','COOH','CO'],'-1.00',1,free_energy=False)
+    pathway.pathway_plot(
+        # ylim=[-1.2,1.2]
+                         )
     # pathway.add_pathway('Ru_111',['N2','N2H','NH3'],'0.00',1,free_energy=False)
     # pathway.add_pathway('Ir_111',['N2','N2H','NH3'],'0.00',1,free_energy=False)
     # pathway.add_pathway('Co_111_mag',['N2','N2H','NH3'],'0.00',1,free_energy=False)
