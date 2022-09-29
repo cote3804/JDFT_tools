@@ -51,7 +51,7 @@ class Pathway:
                                              'label' : 'N2'},
                           'final_state' : {'molecules' : {'NH3' : 2},
                                              'protons' : 0,
-                                             'label': '2NH3'}
+                                             'label': 'NH3'}
                               },
                           
             
@@ -284,7 +284,31 @@ class Pathway:
         self.pathways[self.count] = [material, adsorbates, bias, site, free_energy, proton]
         self.count += 1
     
-    def pathway_plot(self, ylim=None, legend=True, alpha=1, annotation=True, custom_colors=None):
+    def pathway_plot(self, ylim=None, legend=True, alpha=1, annotation='plot', custom_colors=None):
+        '''
+
+        Parameters
+        ----------
+        ylim : TYPE, optional
+            DESCRIPTION. The default is None.
+        legend : TYPE, optional
+            DESCRIPTION. The default is True.
+        alpha : TYPE, optional
+            DESCRIPTION. The default is 1.
+        annotation : string, optional
+            Specify where to place the annotation for the reaction intermediates. 
+            The options are 'plot' (add annotation on top of last material reaction pathway line) 
+            and 'axis' (place on reaction coordinate). Setting to False will remove
+            all annotation. The default is 'plot'.
+        custom_colors : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        '''
+        
         plt.figure(dpi=300)
         plt.ylabel('$\Delta \Phi (eV)$')
         plt.xticks([])
@@ -303,19 +327,53 @@ class Pathway:
             labels.append(f'{path_list[2]}V')
             energies, steps = self.get_energy(path_list[0],path_list[1],path_list[2],
                                               path_list[3],free_energy=path_list[4],proton=path_list[5])
+            step_order = self.reaction_data[self.reaction]['pathway']
+            step_index = 0
             for i,energy in enumerate(energies):
+                #logic to determine if there are gaps in reaction steps to 
+                #adjust the plot for an abbreviated reaction pathway
+                step = steps[i].split('*')[0]
+                new_step_index = step_order.index(step)
+                if new_step_index >= step_index +2:
+                    step_index = new_step_index
+                    #Just draw horizontal lines instead of adding dotted lines
+                    #and annotate
+                    plt.hlines(energy, i, i+0.5, color=color, label=labels[ipath],
+                               alpha=alpha)
+                    if ipath == len(self.pathways.keys())-1 and annotation == 'plot': #only annotate last pathway
+                        plt.annotate(steps[i], ((i+0),energy+0.1), color=color)
+                    continue
+                else:
+                    #continue to normal plotting logic below if the current step
+                    #is not separated by a gap in the reaction path from the previous
+                    #step
+                    step_index = new_step_index
+                    pass
                 plt.hlines(energy, i, i+0.5, color=color, label=labels[ipath],
                            alpha=alpha)
                 if i > 0:
                     plt.plot([i,i-0.5], [energies[i],energies[i-1]], linestyle='--', color=color, label=labels[ipath],
                              alpha=alpha)
-                if ipath == len(self.pathways.keys())-1 and annotation: #only annotate last pathway
+                if ipath == len(self.pathways.keys())-1 and annotation=='plot': #only annotate last pathway
                     plt.annotate(steps[i], ((i+0),energy+0.1), color=color)
-            #Create legend entry objects 
+            #Create legend entry objects
             free_energy_term = 'free energy' if path_list[4] else 'enthalpy'
             legend_entries.append(Line2D([0], [0], 
                                          color=colors[ipath], lw=2,
-                                         label=f'{path_list[0]} {labels[ipath]} {free_energy_term}'))
+                                         label=f'{path_list[0].split("_")[0]} ({path_list[0].split("_")[1]}) {labels[ipath]} {free_energy_term}'))
+        if annotation == 'axis':
+            #create array from 0 to the number of steps in the pathway. 0.25
+            #is added to place ticks in the middle of the step horizontal lines
+            #because they are 0.5 units wide
+            ticks = []
+            for i in range(len(steps)):
+                if i == 0:
+                    ticks.append(0.25)
+                    continue
+                else:
+                    ticks.append(i + 0.25)
+            print(ticks)
+            plt.xticks(ticks=ticks,labels=steps)
         if legend:
             plt.legend(handles=legend_entries, fontsize=6)
         else:
