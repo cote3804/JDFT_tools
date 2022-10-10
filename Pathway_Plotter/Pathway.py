@@ -53,7 +53,20 @@ class Pathway:
                                              'protons' : 0,
                                              'label': 'NH3'}
                               },
-                          
+                          'N2R_Montoya':
+                              {'pathway' : ['N2H','NNH2','N','NH','NH2'],
+                               'protons' : [5,4,3,2,1],
+                               'molecules' : [{},{},{'NH3':1},{'NH3':1},{'NH3':1}],
+                               'entropy' : {'N2': 0.021720172, 'NH3': 0.021830347},
+                               'initial_state' : {'molecules' : {'N2' : 1},
+                                                  'protons' : 6,
+                                                  'label' : 'N2'},
+                               'final_state' : {'molecules' : {'NH3' : 2},
+                                                  'protons' : 0,
+                                                  'label': 'NH3'}
+                                  
+                                  
+                                  },
             
                             'HER':
                           {'pathway' : ['H'],
@@ -114,7 +127,7 @@ class Pathway:
         return all_data
     
     def get_energy(self, material, adsorbates, bias, site, ev=True, free_energy=True, proton='smart'):
-        with open(os.path.join(self.path,self.filename),'r') as f:
+        with open(os.path.join(self.path,self.filename),'r') as f: 
             all_data = json.load(f)
         if material in all_data.keys():
             pass
@@ -142,12 +155,12 @@ class Pathway:
             for intermediate in adsorbates: 
                 if intermediate in all_data[material]['adsorbed'].keys():
                     E_old = 0
+                    E_new = 0
                     for sites in all_data[material]['adsorbed'][intermediate][f'{bias}V'].keys():
                         if all_data[material]['adsorbed'][intermediate][f'{bias}V'][sites]['converged']:
                             E_new = all_data[material]['adsorbed'][intermediate][f'{bias}V'][sites]['final_energy']
                         if E_new < E_old:
                             E_old = E_new
-                            # print(intermediate,sites,E_old)
                     if E_old == 0:
                         raise Exception(f'No sites converged for intermediate {intermediate} ' 
                                         f'on material {material} '
@@ -284,7 +297,7 @@ class Pathway:
         self.pathways[self.count] = [material, adsorbates, bias, site, free_energy, proton]
         self.count += 1
     
-    def pathway_plot(self, ylim=None, legend=True, alpha=1, annotation='plot', custom_colors=None):
+    def pathway_plot(self, ylim=None, legend=True, alpha=1, annotation='plot', custom_colors=None, save_name=None):
         '''
 
         Parameters
@@ -310,7 +323,7 @@ class Pathway:
         '''
         
         plt.figure(dpi=300)
-        plt.ylabel('$\Delta \Phi (eV)$')
+        plt.ylabel('$ \Delta \Phi (eV)$')
         plt.xticks([])
         plt.xlabel('Reaction Coordinate')
         # colors = ['#CE3B7E','#E6552E','#9E50F4','#3AC2BC','#ECB42E','#D1DB49']
@@ -323,11 +336,25 @@ class Pathway:
 
         for ipath in range(len(self.pathways.keys())):
             path_list = self.pathways[ipath]
-            color = colors[ipath]
+            
+            #In case there are more reactions to plot than colors in the color
+            #pallette, this section loops back through the colors
+            loop_number = ipath // len(colors)  if ipath > 0 else 0
+            color = colors[ipath-loop_number*len(colors)]
+
             labels.append(f'{path_list[2]}V')
             energies, steps = self.get_energy(path_list[0],path_list[1],path_list[2],
                                               path_list[3],free_energy=path_list[4],proton=path_list[5])
-            step_order = self.reaction_data[self.reaction]['pathway']
+            #getting the order of reation intermediates. The insert and append lines
+            #add the initial and final states to the order. Only add the states if the 
+            #psthway order doesn't already have the initial and final state labels in it
+            #for example N2R has N2 and NH3 in the pathway which are the initial
+            #and final state labels so they aren't added to step_order to avoid duplication
+            step_order = self.reaction_data[self.reaction]['pathway'].copy()
+            if self.reaction_data[self.reaction]['initial_state']['label'] not in self.reaction_data[self.reaction]['pathway']:
+                step_order.insert(0,self.reaction_data[self.reaction]['initial_state']['label']) 
+            if self.reaction_data[self.reaction]['initial_state']['label'] not in self.reaction_data[self.reaction]['pathway']:
+                step_order.append(self.reaction_data[self.reaction]['final_state']['label']) 
             step_index = 0
             for i,energy in enumerate(energies):
                 #logic to determine if there are gaps in reaction steps to 
@@ -355,12 +382,15 @@ class Pathway:
                     plt.plot([i,i-0.5], [energies[i],energies[i-1]], linestyle='--', color=color, label=labels[ipath],
                              alpha=alpha)
                 if ipath == len(self.pathways.keys())-1 and annotation=='plot': #only annotate last pathway
-                    plt.annotate(steps[i], ((i+0),energy+0.1), color=color)
+                    plt.annotate(steps[i], ((i+0.2),energy+0.1), color=color)
             #Create legend entry objects
             free_energy_term = 'free energy' if path_list[4] else 'enthalpy'
             legend_entries.append(Line2D([0], [0], 
-                                         color=colors[ipath], lw=2,
-                                         label=f'{path_list[0].split("_")[0]} ({path_list[0].split("_")[1]}) {labels[ipath]} {free_energy_term}'))
+                                         color=color, lw=2,
+                                         # label=f'{path_list[0].split("_")[0]} ({path_list[0].split("_")[1]}) {labels[ipath]} {free_energy_term}')
+                                  # label=f'{path_list[0].split("_")[0]} ({path_list[0].split("_")[1]})')
+                                  label=f'{path_list[0].split("_")[0]}')
+                                  )
         if annotation == 'axis':
             #create array from 0 to the number of steps in the pathway. 0.25
             #is added to place ticks in the middle of the step horizontal lines
@@ -372,10 +402,9 @@ class Pathway:
                     continue
                 else:
                     ticks.append(i + 0.25)
-            print(ticks)
-            plt.xticks(ticks=ticks,labels=steps)
+            plt.xticks(ticks=ticks,labels=steps, fontsize=8)
         if legend:
-            plt.legend(handles=legend_entries, fontsize=6)
+            plt.legend(handles=legend_entries, fontsize=6, frameon=False)
         else:
             pass
         
@@ -383,7 +412,9 @@ class Pathway:
             pass
         else:
             plt.ylim(ylim)
-        plt.savefig(os.path.join(self.path,'N2R_Pathway_0V'))
+        
+        if save_name is not None:
+            plt.savefig(os.path.join(self.path,save_name))
         
     def energies(self,ev=True):
         energies_dict = {}
@@ -399,7 +430,7 @@ class Pathway:
             energies_dict[path_list[0]] = energy_dict
         return energies_dict
     
-    def get_adatom_energies(self):
+    def get_adatom_energies(self, ev=True):
         H_to_ev = 27.2114
         E_proton = -16.329628244044773 - (-15.910602945824175)
         adatom = 'N'
@@ -427,6 +458,8 @@ class Pathway:
             surface_energy = all_data[material]['surf'][f'{bias}V']['final_energy']
             adatom_energy = adsorbate_energy - (surface_energy + molecular_energy)
             adatom_energies[material] = adatom_energy
+            if ev:
+                adatom_energies[material] = adatom_energy * H_to_ev
         #TODO add support beyond N2R
             
         return adatom_energies
@@ -465,52 +498,24 @@ class Pathway:
             limiting_energies[material] = tuple([key_string,step_energy])
         return limiting_energies
     
-    
+    def get_step_energy(self,intermediate_names,step_label=None):
+        try:
+            react1 = intermediate_names[0]
+            react2 = intermediate_names[-1]
+        except:
+            raise Exception('intermediate_names must be a list or tuple of length 2')
+        if step_label == None:
+            step_label = intermediate_names[-1]
+        
+        materials = self.get_materials()
+        energies = self.energies()
+        state_1_energies = {}
+        for material in materials:
+            state_1_energies[material] = energies[material][react2] - energies[material][react1]
+        
+        return state_1_energies
+        
     
 if __name__ == '__main__':
     #place test code below
-    
-    my_file = 'all_data.json'
-    my_path = 'C:\\Users\\coopy\\OneDrive - UCB-O365\\Research\\N2R_Scaling'
-    with open(os.path.join(my_path,my_file),'r') as f:
-        my_data = json.load(f)
-        
-    aziz_path = os.path.normpath('C:\\Users\\coopy\\Downloads')
-    aziz_file = 'pyrrolic.json'
-    with open(os.path.join(aziz_path,aziz_file),'r') as f:
-        aziz_data = json.load(f)
-
-    new_dict = my_data | aziz_data 
-    with open(os.path.join(aziz_path,'new_json.json'),'w') as f:
-        aziz_data = json.dump(new_dict, f)
-    
-    # f1data = f2data = "" 
-     
-    # with open(os.path.join(my_path,my_file)) as f1: 
-    #   f1data = f1.read() 
-    # with open(os.path.join(aziz_path,aziz_file)) as f2: 
-    #   f2data = f2.read() 
-     
-    # f1data += f2data
-    # with open (os.path.join(aziz_path,'new_json.json'), 'a') as f3: 
-    #   f3.write(f1data)
-    
-    pathway = Pathway(path=aziz_path, filename='new_json.json', reaction='CO2R')
-    all_data = pathway.get_json()
-    # pathway.get_reaction_data()
-    pathway.add_pathway('Ni',['CO2','COOH','CO'],'0.00',1,free_energy=False)
-    # pathway.add_pathway('Ni',['CO2','COOH','CO'],'-0.50',1,free_energy=False)
-    # pathway.add_pathway('Ni',['CO2','COOH','CO'],'-1.00',1,free_energy=False)
-    # pathway.add_pathway('Ti',['CO2','COOH','CO'],'-1.00',1,free_energy=False)
-    # pathway.add_pathway('Fe',['CO2','COOH','CO'],'-1.00',1,free_energy=False)
-    pathway.pathway_plot(
-        # ylim=[-1.2,1.2]
-                         )
-    # pathway.add_pathway('Ru_111',['N2','N2H','NH3'],'0.00',1,free_energy=False)
-    # pathway.add_pathway('Ir_111',['N2','N2H','NH3'],'0.00',1,free_energy=False)
-    # pathway.add_pathway('Co_111_mag',['N2','N2H','NH3'],'0.00',1,free_energy=False)
-    # # pathway.add_pathway('F_110',['N2','N2H','NNH2','NNH3','N','NH','NH2','NH3'],'0.00',1,free_energy=False)
-    
-    energies = pathway.energies()
-    # pathway.pathway_plot()
-
+    pass
