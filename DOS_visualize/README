@@ -1,7 +1,7 @@
 This document aims to describe how to use the DOS_visualize script
 
 The user can directly use the DOS_visualize script or create a second script to import 
-the DOS_visualize class. After importing and instantiating the class the user will need to run the 
+the DOS_visualize class. After importing and instantiating the class, the user will need to run the 
 plot_dos command on the DOS_visualize instance.
 
 The DOS_visualize object is instantiated with the input files and the types of DOS's you want to plot.
