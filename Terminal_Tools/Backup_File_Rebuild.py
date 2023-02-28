@@ -7,9 +7,12 @@ Created on Mon Dec 12 11:20:01 2022
 
 import json
 from os.path import join as opj
+from os.path import exists as ope
 import os
 from pathlib import Path
 import argparse
+from pymatgen.core.structure import Structure
+from pymatgen.io.vasp import Poscar
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', help='JSON file name to rebuild from', default='combined_N2R_all_data.json')
@@ -60,7 +63,48 @@ def write_convergence(text, path_string):
     except:
         pass
         # print(f'path {path_string} not found')
-            
+        
+def build_poscar(poscar, path_string):
+    '''
+    This function is used to take a Structure object from an all_data.json file and
+    convert it to a POSCAR file in a specified directory
+    
+    Parameters
+    ----------
+    poscar : Dict
+        This dictionary contains a pymatgen Structure object
+    path_string : string
+        The path string to where the POSCAR should be written
+
+    Returns
+    -------
+    None.
+    '''
+    struct = Structure.from_dict(poscar)
+    pos = Poscar(struct)
+    pos.write_file(opj(path_string,'POSCAR'))
+
+def build_contcar(contcar, path_string):
+    '''
+     This function is used to take a Structure object from an all_data.json file and
+     convert it to a CONTCAR file in a specified directory
+     
+    Parameters
+    ----------
+    contcar : dict
+        This dictionary contains a pymatgen Structure object
+    path_string : str
+        The path string to where the POSCAR should be written
+
+    Returns
+    -------
+    None.
+
+    '''
+    struct = Structure.from_dict(contcar)
+    cont = Poscar(struct)
+    cont.write_file(opj(path_string,'CONTCAR'))
+
 def is_bias(string): #function to check if input string is a voltage string
     if string.endswith('V') and '/' not in string:
         return True
@@ -83,7 +127,13 @@ for material in data.keys():
                             write_optlog(opt_log, path_string)
                             convergence = build_convergence(data[material][calc_type][molecule][bias][site]['convergence_file'])
                             write_convergence(convergence, path_string)
-        #Surfaces
+                            # if not ope(opj(path_string,'POSCAR')):
+                                # build_poscar(data[material][calc_type][molecule][bias][site]['poscar'], path_string)
+                            if not ope(opj(path_string, 'CONTCAR')):
+                                try:
+                                    build_contcar(data[material][calc_type][molecule][bias][site]['contcar'], path_string)
+                                except:
+                                    print(f'{path_string} not found')
         elif calc_type == 'surf':
             for bias in data[material][calc_type].keys():
                 if data[material][calc_type][bias]['converged']:
@@ -93,6 +143,13 @@ for material in data.keys():
                     convergence = build_convergence(data[material][calc_type][bias]['convergence_file'])
                     write_optlog(opt_log, path_string)
                     write_convergence(convergence, path_string)
+                    # if not ope(opj(path_string,'POSCAR')):
+                        # build_poscar(data[material][calc_type][bias]['poscar'], path_string)
+                    if not ope(opj(path_string, 'CONTCAR')):
+                        try:
+                            build_contcar(data[material][calc_type][bias]['contcar'], path_string)
+                        except:
+                            print(f'{path_string} not found')
         #Bulks
         elif calc_type == 'bulk':
             if data[material][calc_type]['converged']:

@@ -87,11 +87,14 @@ for part in backup_path:
 #Also perform string manipulation on the path to convert the backup folder path
 #to the current gc_manager directory path and add it to managed_paths
 converged_paths = []
+unconverged_paths= []
 managed_paths = []
+un_managed_paths = [] #unconverged managed paths
 for root,folder,file in os.walk(path):
-    # if root == '/projects/cote3804/BEAST-data/cooper/backup_test/backup_2/adsorbed/Fe_110/N2/0.00V/01':
-        # print(read_convergence(root), read_optlog(root))
-        # print(convergence_compare(root))
+    # if root == '/projects/cote3804/BEAST-data/cooper/backup_test/backup_3/surfs/Re_111/0.00V':
+    #     print(read_convergence(root), read_optlog(root))
+    #     print(convergence_compare(root))
+    #     print(ope(opj(root,'CONTCAR')))
     if convergence_compare(root) is True or 'molecules' in str(root): # and ope(opj(root,'tinyout')) is True:
         #calc_path converts the backup path to the actively managed gc_manager
         # calcs directory path
@@ -99,8 +102,15 @@ for root,folder,file in os.walk(path):
         calc_path = str(managed_path) + '/calcs' + str(root).split(delimiter)[-1]
         converged_paths.append(root)
         managed_paths.append(calc_path)
-        
+    #this elif checks to see if the path isn't converged and then adds it to the
+    #unconverged_paths list as well as adds the actively managed path to the 
+    #un_managed_paths list.
+    elif convergence_compare(root) is False:
+        unconverged_paths.append(root)
+        calc_path = str(managed_path) + '/calcs' + str(root).split(delimiter)[-1]
+        un_managed_paths.append(calc_path)
 
+#This section copies over files from the converged paths to the managed paths
 for backup_path, managed_path in zip(converged_paths, managed_paths):
     files_to_transfer = ['tinyout', 'inputs', 'POSCAR', 'CONTCAR', 'opt.log', 'Ecomponents', 'convergence']
     for file in files_to_transfer:
@@ -112,6 +122,19 @@ for backup_path, managed_path in zip(converged_paths, managed_paths):
             print(f'copied {file} from {converged_file} to {managed_path}')
         else:
             continue
+        
 
+#This section copies over unconverged files from the backup directory to
+#the active gc_manager directory only if the files are missing from the
+#actively managed directory
+for unconverged_path, un_managed_path in zip(unconverged_paths, un_managed_paths):
+    #unconverged_path refers to the backup paths that aren't converged
+    calc_files = ['tinyout', 'inputs', 'POSCAR', 'CONTCAR', 'opt.log', 'Ecomponents', 'convergence']
+    for file in calc_files:
+        if ope(opj(un_managed_path,file)) is False: # and un_managed_path == '/scratch/alpine/cote3804/jdft/calcs/adsorbed/V_110/NH/0.00V/01':
+            print(un_managed_path)
+            backup_file = opj(unconverged_path,file)
+            cmd = f'cp {backup_file} {un_managed_path}'
+            subprocess.run(cmd, shell=True)
 
         

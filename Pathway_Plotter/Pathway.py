@@ -64,9 +64,32 @@ class Pathway:
                                'final_state' : {'molecules' : {'NH3' : 2},
                                                   'protons' : 0,
                                                   'label': 'NH3'}
-                                  
-                                  
                                   },
+                            'N2R_alternating':
+                                {'pathway' : ['N2','N2H','NHNH','NHNH2','NH2NH2','NH2','NH3'],
+                                 'protons': [6,5,4,3,2,1,0],
+                                 'molecules' : [{},{},{},{},{},{'NH3':1},{'NH3':1}],
+                                 'entropy' : {'N2': 0.021720172, 'NH3': 0.021830347},
+                                 'initial_state' : {'molecules' : {'N2' : 1},
+                                                    'protons' : 6,
+                                                    'label' : 'N2'},
+                                 'final_state' : {'molecules' : {'NH3' : 2},
+                                                    'protons' : 0,
+                                                    'label': 'NH3'}
+                                    },
+                                
+                            'N2R_dissociative': #This pathway does not actually work. It is only for extracting energies
+                                {'pathway': ['N','NH','NH2','NH3'],
+                                 'protons': [6,4,2,0],
+                                 'molecules': [{},{},{},{}],
+                                 'entropy' : {'N2': 0.021720172, 'NH3': 0.021830347},
+                                 'initial_state' : {'molecules' : {'N2' : 1},
+                                                    'protons' : 6,
+                                                    'label' : 'N2'},
+                                 'final_state' : {'molecules' : {'NH3' : 2},
+                                                    'protons' : 0,
+                                                    'label': 'NH3'}
+                                 },
             
                             'HER':
                           {'pathway' : ['H'],
@@ -126,7 +149,7 @@ class Pathway:
             all_data = json.load(f)
         return all_data
     
-    def get_energy(self, material, adsorbates, bias, site, ev=True, free_energy=True, proton='smart'):
+    def get_energy(self, material, adsorbates, bias, site, ev=True, free_energy=True, proton='smart', reference=True):
         with open(os.path.join(self.path,self.filename),'r') as f: 
             all_data = json.load(f)
         if material in all_data.keys():
@@ -138,9 +161,12 @@ class Pathway:
         energy= []
         step = []
         
+        if adsorbates == 'all':
+            adsorbates = self.reaction_data[self.reaction]['pathway']
+        
         if type(site) == int:
             ## If user enters a specific site, calculate energies at that site ##
-            for intermediate in adsorbates: 
+            for intermediate in adsorbates:
                 if intermediate in all_data[material]['adsorbed'].keys() and all_data[material]['adsorbed'][intermediate][f'{bias}V'][f'0{site}']['converged']:
                     energy.append(all_data[material]['adsorbed'][intermediate][f'{bias}V'][f'0{site}']['final_energy'])
                     step.append(f'{intermediate}*')
@@ -153,6 +179,10 @@ class Pathway:
         elif site == 'min':
             ## If user enters 'min', search all sites for minimum E value ##
             for intermediate in adsorbates: 
+                try:
+                    all_data[material]['adsorbed']
+                except:
+                    raise Exception(f'material {material} has no surface calcs')
                 if intermediate in all_data[material]['adsorbed'].keys():
                     E_old = 0
                     E_new = 0
@@ -179,7 +209,8 @@ class Pathway:
         if ev:
             energy = list(np.array(energy)*27.2114)
         #Set reference point to final state
-        energy = list(np.array(energy)-energy[-1])
+        if reference:
+            energy = list(np.array(energy)-energy[-1])
         return energy, step
     
     def reaction_references(self, all_data, energies, steps, material, adsorbates, 
@@ -192,7 +223,7 @@ class Pathway:
         if proton == 'smart': #use solution proton reference
             E_proton = -16.329628244044773 - (-15.910602945824175)
         elif proton == 'stupid':
-            E_proton = (1/2) * all_data['H2'][f'{bias}V']['final_energy']
+            E_proton = (1/2) * all_data['H2']['0.00V']['final_energy']
         S_proton = 0.000487715
         # ZPE_proton = 0.013852
         
@@ -277,27 +308,24 @@ class Pathway:
                     except: #use included values in reaction_data if value not in json
                         molecule_energy = molecule_quantity * self.reaction_data['molecules'][molecule][bias]
                     if free_energy and molecule in entropy.keys():
-                        # molecule_energy = molecule_energy + molecule_quantity*(ZPE[molecule] - entropy[molecule])
-                        #ZPE and Entropy
                         molecule_energy = molecule_energy - molecule_quantity * entropy[molecule]
-                        #Entropy alone
-                        #TODO decide whether or not to implement ZPE
+            
             energies[i] = adsorbate_energy + proton_energy + molecule_energy
-            # print(adsorbate_energy, proton_energy, molecule_energy)
-            i+=1
+            
+            i+=1 #index to keep track of which adsorbate we're on
           #==================================================================# 
-        energies.insert(0,initial_total_energy)
-        energies.append(final_total_energy)
+        energies.insert(0,initial_total_energy) #adding initial state energy to start of list
+        energies.append(final_total_energy) #adding final state energy to end of list
          
-        steps.insert(0, self.reaction_data[self.reaction]['initial_state']['label'])
-        steps.append(self.reaction_data[self.reaction]['final_state']['label'])
+        steps.insert(0, self.reaction_data[self.reaction]['initial_state']['label']) #labeling final state
+        steps.append(self.reaction_data[self.reaction]['final_state']['label']) #labeling initial state
         return energies, steps
         
     def add_pathway(self, material, adsorbates, bias, site, free_energy=True, proton='smart'):
         self.pathways[self.count] = [material, adsorbates, bias, site, free_energy, proton]
         self.count += 1
     
-    def pathway_plot(self, ylim=None, legend=True, alpha=1, annotation='plot', custom_colors=None, save_name=None):
+    def pathway_plot(self, ylim=None, legend=True, alpha=1, annotation='plot', custom_colors=None, save_name=None, linestyles=None):
         '''
 
         Parameters
@@ -321,11 +349,14 @@ class Pathway:
         None.
 
         '''
+        line_style_guide = ['solid','solid', #style 1 and 2 for horizontal lines
+                            'dashed', 'dotted'] #style 1 and 2 for diagonal lines
         
         plt.figure(dpi=300)
-        plt.ylabel('$ \Delta \Phi (eV)$')
+        plt.ylabel('$ \Delta \Omega (eV)$')
         plt.xticks([])
         plt.xlabel('Reaction Coordinate')
+        plt.gca().spines['right'].set_visible(False) #turn off right border
         # colors = ['#CE3B7E','#E6552E','#9E50F4','#3AC2BC','#ECB42E','#D1DB49']
         if custom_colors is None:
             colors = ['#390099','#9e0059','#ff0054','#ff5400','#ffbd00','#D1DB49']
@@ -333,9 +364,14 @@ class Pathway:
             colors = custom_colors
         labels = []
         legend_entries = []
-
+        
         for ipath in range(len(self.pathways.keys())):
             path_list = self.pathways[ipath]
+            
+            if linestyles is None:
+                linestyle = 0
+            else:
+                linestyle = linestyles[ipath]
             
             #In case there are more reactions to plot than colors in the color
             #pallette, this section loops back through the colors
@@ -366,7 +402,7 @@ class Pathway:
                     #Just draw horizontal lines instead of adding dotted lines
                     #and annotate
                     plt.hlines(energy, i, i+0.5, color=color, label=labels[ipath],
-                               alpha=alpha)
+                               alpha=alpha, linestyle=line_style_guide[linestyle])
                     if ipath == len(self.pathways.keys())-1 and annotation == 'plot': #only annotate last pathway
                         plt.annotate(steps[i], ((i+0),energy+0.1), color=color)
                     continue
@@ -377,10 +413,10 @@ class Pathway:
                     step_index = new_step_index
                     pass
                 plt.hlines(energy, i, i+0.5, color=color, label=labels[ipath],
-                           alpha=alpha)
+                           alpha=alpha, linestyle=line_style_guide[linestyle])
                 if i > 0:
-                    plt.plot([i,i-0.5], [energies[i],energies[i-1]], linestyle='--', color=color, label=labels[ipath],
-                             alpha=alpha)
+                    plt.plot([i,i-0.5], [energies[i],energies[i-1]], color=color, label=labels[ipath],
+                             alpha=alpha, linestyle=line_style_guide[linestyle+2])
                 if ipath == len(self.pathways.keys())-1 and annotation=='plot': #only annotate last pathway
                     plt.annotate(steps[i], ((i+0.2),energy+0.1), color=color)
             #Create legend entry objects
@@ -388,8 +424,9 @@ class Pathway:
             legend_entries.append(Line2D([0], [0], 
                                          color=color, lw=2,
                                          # label=f'{path_list[0].split("_")[0]} ({path_list[0].split("_")[1]}) {labels[ipath]} {free_energy_term}')
-                                  # label=f'{path_list[0].split("_")[0]} ({path_list[0].split("_")[1]})')
-                                  label=f'{path_list[0].split("_")[0]}')
+                                  # label=f'{path_list[0].split("_")[0]} ({path_list[0].split("_")[1]})',
+                                   label=f'{path_list[0].split("_")[0]}',
+                                  linestyle = line_style_guide[linestyle*3])
                                   )
         if annotation == 'axis':
             #create array from 0 to the number of steps in the pathway. 0.25
@@ -404,7 +441,7 @@ class Pathway:
                     ticks.append(i + 0.25)
             plt.xticks(ticks=ticks,labels=steps, fontsize=8)
         if legend:
-            plt.legend(handles=legend_entries, fontsize=6, frameon=False)
+            plt.legend(handles=legend_entries, fontsize=9, frameon=False, bbox_to_anchor=(1.15, 1))
         else:
             pass
         
@@ -416,14 +453,14 @@ class Pathway:
         if save_name is not None:
             plt.savefig(os.path.join(self.path,save_name))
         
-    def energies(self,ev=True):
+    def energies(self,ev=True, reference=True):
         energies_dict = {}
         for ipath in range(len(self.pathways.keys())):
             path_list = self.pathways[ipath]
             #calculate energies and create list of intermediates using the parameters
             #added by add_pathway().
             energies, steps = self.get_energy(path_list[0],path_list[1],path_list[2],path_list[3],
-                                              free_energy=path_list[4],ev=ev,proton=path_list[5])
+                                              free_energy=path_list[4],ev=ev,proton=path_list[5],reference=reference)
             energy_dict = {}
             for i,energy in enumerate(energies):
                 energy_dict[steps[i]] = energy
@@ -518,4 +555,10 @@ class Pathway:
     
 if __name__ == '__main__':
     #place test code below
-    pass
+    file = 'combined_N2R_all_data.json'
+    path = os.path.normpath('C:\\Users\\coopy\\OneDrive - UCB-O365\\Research\\N2R_Scaling')
+    material = 'Ru_111'
+    
+    dissociative_pathway = Pathway(path=path, filename=file, reaction='N2R_dissociative')
+    dissociative_pathway.add_pathway(material ,['N','NH','NH2','NH3'],'0.00','min',free_energy=True)
+    dissociative_energies = dissociative_pathway.energies(ev=False,reference=False)[material]

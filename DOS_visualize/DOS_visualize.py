@@ -17,7 +17,7 @@ from dos_helper import set_rc_params, get_plot, fill_zeros
 set_rc_params()
 
 class DOS_visualize:
-    def __init__(self, files, Atoms=[], orbitals=['all'], spins=None, path=None):
+    def __init__(self, files, Atoms=[], orbitals=[], spins=None, path=None):
         '''
         Options for Atoms are:
         'Total', Plots total DOS
@@ -98,21 +98,25 @@ class DOS_visualize:
                 plot_strings[file_key] = dos_to_plot
         return plot_strings
     
-    def visualize(self,plot_strings,all_jdos,smear=0.1,zero_width=0.02,elim=[-9, 1],
-                 dens_range=[-75,75], dos_lines=[], colors=None, save=False, savename=None):
-        
+    def visualize(self,plot_strings,all_jdos,smear=0.1,zero_width=0.02,elim=[-9, 1], dens_lim=None,
+                 dens_range=[-75,75], dos_lines=[], input_colors=None, save=False, savename=None,
+                 legend = True):
         nplots = len(plot_strings.keys())
         fig, axes = plt.subplots(1, nplots, figsize = (15, 5), sharey = 'row',
                                  dpi = 500 if save else 100)
-        
-        if colors is None:
-            colors = ['#0D7B98','#0D7B98','#15CBAD','#15CBAD','#FDE869','#FDE869',
-                      '#FC7968','#FC7968','#FA4A59','#FA4A59']
         plot_colors = []
         if savename is None:
             savename = 'Dos_Plot_{self.file[0])'
 
         for ifile,file in enumerate(plot_strings.keys()):
+            
+            colors = []
+            if input_colors is None:
+                colors = ['#0D7B98','#0D7B98','#15CBAD','#15CBAD','#FDE869','#FDE869',
+                          '#FC7968','#FC7968','#FA4A59','#FA4A59']
+            elif type(input_colors) is list:
+                colors = input_colors[ifile]
+                        
             ##Plotting initialization##
             plotter = DosPlotter(sigma = 0.3, zero_at_efermi=True)  # energies are already zeroed!
             
@@ -133,6 +137,7 @@ class DOS_visualize:
                     energy = [e + efermi for e in energy]
                     max_dens = max(dens)
                     dens_range = [-(0.2*max_dens),(0.2*max_dens)]
+                    # dens_range = [-1000,1000]
                     name = f'Total {spin}'
                 else:
                     if len(pdos[0].split('_')) == 1:
@@ -158,7 +163,8 @@ class DOS_visualize:
                             energy, density = fill_zeros(jdos[spin]['Energy'], dens, zero_width)
                             energy = [e + efermi for e in energy]
                             max_dens = max(dens)
-                            dens_range = [-(1.3*max_dens),(1.3*max_dens)]
+                            dens_range = [-(0.001*max_dens),(0.001*max_dens)]
+                            # dens_range = [-.05,0.05]
                             name = f'{pdos[0]} {pdos[1]} {spin}'
                     if dos_type == 'element': ###################Element
                         if pdos[1] == 'all':  ######################all
@@ -200,46 +206,70 @@ class DOS_visualize:
                 names.append(name)
                 
                 plot_colors.append(colors[ipdos])
-
             plot = get_plot(plotter, energy_lim=elim, colors=plot_colors, alpha = 0.3,
-                            density_lim = dens_range,# if axid in [0,1,2,3,4] else None,
+                            density_lim = dens_range if dens_lim is None else dens_lim[ifile],
+                            # density_lim = [-10,10],
                             normalize_density=False, ax = ax, 
-                            lloc = (-0.1, 1.05), #if axid == 3 else (1.0, 1.0), 
+                            lloc = (-0.1, 1.05),  
                             lcol = 1, lframe = True,
                             ylabel = True if ifile == 0 else False, density_ticks = False, 
-                           # mark_fermi = efermi if axid in [0,1,2,3] else None,
                             mark_fermi = True, fill_to_efermi = False, pdos_label = True,
-                            dos_lines = dos_lines, show_legend = True
+                            dos_lines = dos_lines, show_legend = True if legend else False
                             )
-        plt.show()
         
         if save:
-            plt.savefig(savename)
+            plt.savefig(os.path.join(self.path,savename))
+            plt.show()
             plt.close()
+        plt.show()
         
     def plot_dos(self,smear=0.1,save=False,savename=None,zero_width=0.02,elim=[-8,2],
-                 dos_lines=[],colors=None):
+                 dos_lines=[],colors=None,dens_lim=None,legend=True):
         all_jdos = self.open_jdos(self.files)
         inputs_dict = self.dict_build()
         plot_strings = self.gen_plot_strings()
         self.visualize(plot_strings,all_jdos,smear=smear,save=save,
                        savename=savename,zero_width=zero_width,elim=elim,
-                       dos_lines=dos_lines,colors=colors)
+                       dos_lines=dos_lines,input_colors=colors,dens_lim=dens_lim,legend=legend)
         
-                    
-dos_object = DOS_visualize(files=['jpdos.json'], 
-                           Atoms=[['Total'],['Ir','Ir_2'],['Ir_20','Ir_21']],
-                            orbitals=[['all'],[['s','d'],['all']],[['all'],['all']]],
-                            path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
-                           
-# dos_object = DOS_visualize(files=['jpdos.json'], Atoms=[['Total']],
-#                             orbitals=[['all']],
-#                             path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
 
-# test_dict = dos_object.dict_build()
-# plot_dict = dos_object.gen_plot_strings()
-# all_jdos = dos_object.open_jdos(['jpdos.json','jpdos _2.json'])
-# dos_object.visualize(plot_dict,all_jdos)
 
-dos_object.plot_dos()
-
+if __name__ == '__main__':          
+    ############ Place test code here ###############        
+    # dos_object = DOS_visualize(files=['jpdos.json'], 
+    #                            Atoms=[['Total'],['Ir','Ir_2'],['Ir_20','Ir_21']],
+    #                             orbitals=[['all'],[['s','d'],['all']],[['all'],['all']]],
+    #                             path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
+    
+    Cr_dos = DOS_visualize(files=['jpdos_N2.json','jpdos_Cr_surf.json','jpdos_Cr_N2_3.json'],
+                                Atoms=[['Total'],['Total'],['Cr_5','N_1']],
+                                orbitals=[['p'],['all'],[['d'],[ 'p']]],
+                                path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
+                               
+    Fe_dos = DOS_visualize(files=['jpdos_N2.json','jpdos_Fe_surf.json','jpdos_Fe_N2.json'],
+                                Atoms=[['Total'],['Total'],['Fe_5','N_1']],
+                                orbitals=[['p'],['all'],[['d'],[ 'p']]],
+                                path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
+    
+    # dos_object = DOS_visualize(files=['jpdos.json'], Atoms=[['Total']],
+    #                             orbitals=[['all']],
+    #                             path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
+    
+    # test_dict = dos_object.dict_build()
+    # plot_dict = dos_object.gen_plot_strings()
+    # all_jdos = dos_object.open_jdos(['jpdos.json','jpdos _2.json'])
+    # dos_object.visualize(plot_dict,all_jdos)
+    
+    Cr_dos.plot_dos(save=True, savename='Cr_pDOS_plot', 
+                        dens_lim=[[-30000,30000],[-1200,1200],[-30,30]],
+                        elim=[-8,1.5],
+                        colors=[['#81B10D','#81B10D'],['#E6552E','#E6552E'],['#E6552E','#E6552E','#81B10D','#81B10D']],
+                        # legend=False
+                        )
+    
+    Fe_dos.plot_dos(save=True, savename='Fe_pDOS_plot', 
+                        dens_lim=[[-30000,30000],[-1200,1200],[-30,30]],
+                        colors=[['#81B10D','#81B10D'],['#CE3B7E','#CE3B7E'],['#CE3B7E','#CE3B7E','#81B10D','#81B10D']],
+                        elim=[-8,1.5],
+                        # legend=False
+                        )
