@@ -19,14 +19,12 @@ args = parser.parse_args()
 
 import os
 import sys
-paths = os.environ['PATH'] #This block looks for the gc_manager path and then 
-for path in paths.split(':'): #appends the path to the active python path so
-    if 'manager' in path: #that the jdft_helper script functions can be used
-        gc_manager_path = path
-        break
+gc_manager_path = os.environ['JDFTx_manager_home'] 
+#This block looks for the gc_manager path and then 
+#appends the path to the active python path so
+#that the jdft_helper script functions can be used
 sys.path.append(gc_manager_path)
 from jdft_helper import helper
-
 
 
 bias = args.bias
