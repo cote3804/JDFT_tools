@@ -22,10 +22,13 @@ file=args.f
 path = os.getcwd()
 file = opj(path,'combined_N2R_all_data.json')
 
+hartree_to_ev = 27.2114
+
 with open(file,'r') as f:
     data = json.load(f)
 
 def build_optlog(optlog_dict):
+    hartree_to_ev = 27.2114
     text = []
     current_step = 0
     for step_num in optlog_dict.keys():
@@ -33,7 +36,7 @@ def build_optlog(optlog_dict):
         text.append(f'        Step     Time         Energy       fmax\n')
         text.append(f'*Force-consistent energies used in optimization.\n')
         for i, step_dict in enumerate(optlog_dict[step_num]):
-            text.append(f'{step_dict["opt_method"]}:    {i:>3} 00:00:00   {step_dict["energy"]:7.6f}* {step_dict["force"]:>9.4f}\n')
+            text.append(f'{step_dict["opt_method"]}:    {i:>3} 00:00:00   {step_dict["energy"]*hartree_to_ev:7.6f}* {step_dict["force"]:>9.4f}\n')
         text.append('\n')
     return text
 

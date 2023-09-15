@@ -12,6 +12,8 @@ from pymatgen.electronic_structure import dos
 from pymatgen.electronic_structure.core import Spin
 import numpy as np
 
+import sys #TODO remove from github
+sys.path.append("C:\\Users\\coopy\\OneDrive - UCB-O365\\github\\JDFT_tools\\DOS_visualize")
 
 from dos_helper import set_rc_params, get_plot, fill_zeros
 set_rc_params()
@@ -44,7 +46,7 @@ class DOS_visualize:
         if spins is None:
             spins = []
             for i in range(len(files)):
-                spins.append(['up','down'])
+                spins.append(['spinup','spindn'])
                 
         
         self.path = path    
@@ -104,6 +106,7 @@ class DOS_visualize:
         nplots = len(plot_strings.keys())
         fig, axes = plt.subplots(1, nplots, figsize = (15, 5), sharey = 'row',
                                  dpi = 500 if save else 100)
+        print(plot_strings)
         plot_colors = []
         if savename is None:
             savename = 'Dos_Plot_{self.file[0])'
@@ -118,7 +121,7 @@ class DOS_visualize:
                 colors = input_colors[ifile]
                         
             ##Plotting initialization##
-            plotter = DosPlotter(sigma = 0.3, zero_at_efermi=True)  # energies are already zeroed!
+            plotter = DosPlotter(sigma = smear, zero_at_efermi=True)  # energies are already zeroed!
             
             if nplots == 1:
                 ax = axes
@@ -172,6 +175,7 @@ class DOS_visualize:
                             initial = False
                             accepted_orbitals = ['s','p','d','f']
                             for atom in jdos[spin]:
+                                print(atom)
                                 if atom.split('_')[0] == element:
                                     for orbit in jdos[spin][atom]:
                                         if initial is False:
@@ -234,22 +238,26 @@ class DOS_visualize:
         
 
 
-if __name__ == '__main__':          
+if __name__ == '__main__':   
+
+    path = 'C:\\Users\\coopy\\Downloads'  
+    files = ["FA-S.json"]
     ############ Place test code here ###############        
     # dos_object = DOS_visualize(files=['jpdos.json'], 
     #                            Atoms=[['Total'],['Ir','Ir_2'],['Ir_20','Ir_21']],
     #                             orbitals=[['all'],[['s','d'],['all']],[['all'],['all']]],
     #                             path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
     
-    Cr_dos = DOS_visualize(files=['jpdos_N2.json','jpdos_Cr_surf.json','jpdos_Cr_N2_3.json'],
-                                Atoms=[['Total'],['Total'],['Cr_5','N_1']],
-                                orbitals=[['p'],['all'],[['d'],[ 'p']]],
-                                path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
+    # Cr_dos = DOS_visualize(files=['jpdos_N2.json','jpdos_Cr_surf.json','jpdos_Cr_N2_3.json'],
+    #                             Atoms=[['Total'],['Total'],['Cr_5','N_1']],
+    #                             orbitals=[['p'],['all'],[['d'],[ 'p']]],
+    #                             path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
                                
-    Fe_dos = DOS_visualize(files=['jpdos_N2.json','jpdos_Fe_surf.json','jpdos_Fe_N2.json'],
-                                Atoms=[['Total'],['Total'],['Fe_5','N_1']],
-                                orbitals=[['p'],['all'],[['d'],[ 'p']]],
-                                path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
+    Chev_dos = DOS_visualize(files=files,
+                                Atoms=[['Fe']],
+                                orbitals=[[]],
+                                path=path)
+    data = Chev_dos.open_jdos(files)
     
     # dos_object = DOS_visualize(files=['jpdos.json'], Atoms=[['Total']],
     #                             orbitals=[['all']],
@@ -260,16 +268,18 @@ if __name__ == '__main__':
     # all_jdos = dos_object.open_jdos(['jpdos.json','jpdos _2.json'])
     # dos_object.visualize(plot_dict,all_jdos)
     
-    Cr_dos.plot_dos(save=True, savename='Cr_pDOS_plot', 
-                        dens_lim=[[-30000,30000],[-1200,1200],[-30,30]],
-                        elim=[-8,1.5],
-                        colors=[['#81B10D','#81B10D'],['#E6552E','#E6552E'],['#E6552E','#E6552E','#81B10D','#81B10D']],
-                        # legend=False
-                        )
+    # Cr_dos.plot_dos(save=True, savename='Cr_pDOS_plot', 
+    #                     dens_lim=[[-30000,30000],[-1200,1200],[-30,30]],
+    #                     elim=[-8,1.5],
+    #                     colors=[['#81B10D','#81B10D'],['#E6552E','#E6552E'],['#E6552E','#E6552E','#81B10D','#81B10D']],
+    #                     # legend=False
+    #                     )
     
-    Fe_dos.plot_dos(save=True, savename='Fe_pDOS_plot', 
-                        dens_lim=[[-30000,30000],[-1200,1200],[-30,30]],
-                        colors=[['#81B10D','#81B10D'],['#CE3B7E','#CE3B7E'],['#CE3B7E','#CE3B7E','#81B10D','#81B10D']],
-                        elim=[-8,1.5],
+    
+    Chev_dos.plot_dos(save=True, 
+                      # savename='Fe_pDOS_plot', 
+                        dens_lim=[[-600,600]],
+                        #colors=[['#81B10D','#81B10D'],['#CE3B7E','#CE3B7E'],['#CE3B7E','#CE3B7E','#81B10D','#81B10D']],
+                        elim=[-8,1.5],smear=0.1
                         # legend=False
                         )
