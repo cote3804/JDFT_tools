@@ -2,9 +2,13 @@ from data.Data_Parser import Data_Parser
 from data.Materials import Material, Materials
 
 class Calculator:
-    def __init__(self, data:Data_Parser, reaction:str) -> None:
+    def __init__(self, data:Data_Parser, reaction:str, ev=True) -> None:
         self.data = data
         self.reaction = Reaction(reaction)
+        if ev == True:
+            self.ev = 27.2114 #H to eV conversion
+        elif ev == False:
+            self.ev = 1
     
     def calculate_surface_properties(self, materials:Materials) -> None:
         surface_properties = {}
@@ -13,15 +17,24 @@ class Calculator:
             
     def intermediate_energy(self, surface:str, intermediate:str, bias:str, site:str) -> float:
         adsorbed_energy = self.data.get_adsorbed_energy(surface, bias, intermediate)
-        reference_energy = self.reaction.reference_energy(intermediate, bias)
+        reference_energy = self.reaction.reference_energy(intermediate, bias, self.ev)
         calculated_energy = adsorbed_energy + reference_energy
-        return calculated_energy
+        print(calculated_energy, adsorbed_energy, reference_energy, surface, intermediate, bias, site)
+        return calculated_energy * self.ev
     
+    def terminal_energies(self, surface:str, bias:str) -> (float, float):
+        surface_energy = self.data.get_surface_energy(surface, bias) * self.ev
+        initial_energy = self.reaction.reference_energy("initial", bias, self.ev) * self.ev
+        final_energy = self.reaction.reference_energy("final", bias, self.ev) * self.ev
+        return (surface_energy + initial_energy), (surface_energy + final_energy)
+
     def set_material_energies(self, material: Material) -> None:
         energies = {}
         surfaces = material.surfaces
         for surface in surfaces:
             energies[surface] = {}
+            energies[surface]["initial"] = {}
+            energies[surface]["final"] = {}
             for intermediate in self.reaction.find_reaction_intermediates(self.data, surface):
                 bias_energies = {}
                 for bias in self.data.get_intermediate_biases(surface, intermediate):
@@ -30,6 +43,8 @@ class Calculator:
                         calculated_energy = self.intermediate_energy(surface, intermediate, bias, site)
                         bias_energies[bias].update({site: calculated_energy})
                     energies[surface].update({intermediate: bias_energies})
+                    energies[surface]["initial"].update({bias: self.terminal_energies(surface, bias)[0]})
+                    energies[surface]["final"].update({bias: self.terminal_energies(surface, bias)[1]})
         material.energies = energies
 
 #TODO Don't need to define list of intermediates in both the References and Reaction
@@ -42,8 +57,11 @@ class Reaction:
         self.references = References(reaction)
         self.intermediates = intermediate_dict[reaction]
     
-    def reference_energy(self, intermediate, bias):
-        reference_energy = self.references.get_intermediate_references(intermediate, bias)
+    def reference_energy(self, intermediate, bias, ev):
+        if intermediate in ["initial", "final"]:
+            reference_energy = self.references.get_termination_reference(intermediate, bias, ev)
+        else:
+            reference_energy = self.references.get_intermediate_references(intermediate, bias, ev)
         return reference_energy
     
     def find_reaction_intermediates(self, data:Data_Parser, surface) -> list:
@@ -57,8 +75,8 @@ class Reaction:
 
 class References:
     def __init__(self, reaction:str) -> None:
-        self.reference_energies = {"N2":{"G": 10, "nelec":14}, "NH3":{"G":8, "nelec":10}, 
-                                    "H+":{"G":1, "nelec":0}}
+        self.reference_energies = {"N2":{"G": -18.2700562, "nelec":10}, "NH3":{"G":-10.4283238, "nelec":8}, 
+                                    "H+":{"G":-0.419025298, "nelec":0}}
         self.reference_table = {"N2": {"H+":6}, "N2H": {"H+":5}, "NNH2": {"H+":4},
                            "N": {"NH3":1, "H+":3}, "NH": {"NH3":1, "H+":2},
                            "NH2": {"NH3":1, "H+":1}, "NH3":{"NH3":1}}
@@ -70,15 +88,37 @@ class References:
         pass
         
     
-    def get_intermediate_references(self, intermediate, bias):
+    def get_intermediate_references(self, intermediate, bias, ev):
         reference_energy = 0
+        bias = self.bias_string_to_float(bias)
+        mu = self.bias_to_mu(bias, ev)
         for molecule, quantity in self.reference_table[intermediate].items():
             # print(self.reference_energies[molecule]["G"], self.reference_energies[molecule]["nelec"])
             reference_energy += ((self.reference_energies[molecule]["G"]
-                                + self.reference_energies[molecule]["nelec"] * self.bias_string_to_float(bias))
+                                - self.reference_energies[molecule]["nelec"] * mu)
                                  ) * quantity
+            # print(molecule, quantity)
+            print("references for ", intermediate, ": ", reference_energy, " ", molecule, " ", quantity)
+            print( "MuN: " , mu * self.reference_energies[molecule]['nelec'])
+        print(reference_energy)
         return reference_energy
-        
+    
+    #TODO: these should be the same method
+
+    def get_termination_reference(self, termination, bias, ev):
+        reference_energy = 0
+        bias = self.bias_string_to_float(bias)
+        mu = self.bias_to_mu(bias, ev)
+        for molecule, quantity in self.reaction_terminations[self.reaction][termination].items():
+            reference_energy += ((self.reference_energies[molecule]["G"]
+                                - self.reference_energies[molecule]["nelec"] * mu)
+                                 ) * quantity
+            print("references for ", termination, ": ", reference_energy, " ", molecule, " ", quantity)
+            print( "MuN: " , mu * self.reference_energies[molecule]['nelec'], mu)
+        return reference_energy
+    
     def bias_string_to_float(self, bias):
         return float(bias.split('V')[0])
     
+    def bias_to_mu(self, bias:int, ev:float) -> float:
+        return (-bias) / ev

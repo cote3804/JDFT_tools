@@ -1,6 +1,49 @@
 
 from data.Data_Parser import Data_Parser
-# from data.Materials import Material
+
+# Material class to store data with each material
+
+class Material:
+    def __init__(self, bulk_name, data: Data_Parser):
+        self.bulk_name = bulk_name
+        self.surfaces = data.get_surfaces(self.bulk_name)
+        self.energies = {}
+
+    def get_FED_energy(self, surface:str, bias:str, referenced:str):
+        if referenced == "final":
+            reference_energy = self.energies[surface]["final"][bias]
+        elif referenced == "initial":
+            reference_energy = self.energies[surface]["initial"][bias]
+        FED_energies = {}
+        surface_energy = self.energies[surface]
+        for intermediate in surface_energy.keys():
+            if intermediate not in ["initial", "final"]:
+                FED_energy = min([E for (s,E) in surface_energy[intermediate][bias].items()])
+                FED_energies[intermediate] = FED_energy - reference_energy
+            elif intermediate in ["initial", "final"]:
+                continue
+        FED_energies["initial"] = surface_energy["initial"][bias] - reference_energy
+        FED_energies["final"] = surface_energy["final"][bias] - reference_energy
+        return FED_energies
+    # @property
+    # def surfaces(self) -> list:
+    #     return self.surfaces
+    
+    # @surfaces.setter
+    # def surfaces(self, surfaces:list) -> None:
+    #     self.surfaces = surfaces
+
+    @property
+    def surface_data(self) -> dict:
+        return self.surface_data
+    
+    @surface_data.setter
+    def surface_data(self, surface_data:dict) -> None:
+        self.surface_data = surface_data
+        
+    def get_surface_data(self, surface):
+        return self.energies[surface]
+
 
 class Materials:
     def __init__(self, data:Data_Parser, bulks:list) -> None:
@@ -39,39 +82,7 @@ class Materials:
         material = self.get_material(bulk_name)
         
 
-# Material class to store data with each material
 
-class Material:
-    def __init__(self, bulk_name, data: Data_Parser):
-        self.bulk_name = bulk_name
-        self.surfaces = data.get_surfaces(self.bulk_name)
-        self.energies = {}
-
-    def get_FED_energy(self, surface:str, bias:str):
-        FED_energies = {}
-        surface_energy = self.energies[surface]
-        for intermediate in surface_energy.keys():
-            FED_energy = min([E for (s,E) in surface_energy[intermediate][bias].items()])
-            FED_energies[intermediate] = FED_energy
-        return FED_energies
-    # @property
-    # def surfaces(self) -> list:
-    #     return self.surfaces
-    
-    # @surfaces.setter
-    # def surfaces(self, surfaces:list) -> None:
-    #     self.surfaces = surfaces
-
-    @property
-    def surface_data(self) -> dict:
-        return self.surface_data
-    
-    @surface_data.setter
-    def surface_data(self, surface_data:dict) -> None:
-        self.surface_data = surface_data
-        
-    def get_surface_data(self, surface):
-        return self.energies[surface]
     
 
         

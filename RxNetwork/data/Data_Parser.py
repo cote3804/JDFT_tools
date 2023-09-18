@@ -17,19 +17,23 @@ class Data_Parser:
     def surface_data(self, surface) -> dict:
         return self.all_data[surface]
     
+    def get_surface_energy(self, surface:str, bias:str) -> float:
+        return self.all_data[surface]["surf"][bias]["final_energy"]
+    
     def get_adsorbed_energy(self, surface:str, bias:str, intermediate:str, site=None) -> float:
         sites_data = self.all_data[surface]["adsorbed"][intermediate][bias]
         if site != None:
             return sites_data[site]["final energy"] 
         elif site == None:
-            lowest_site, lowest_energy = self.get_lowest_site(sites_data)
+            lowest_site, lowest_energy = self.get_lowest_site(surface, intermediate, bias)
             if len(lowest_site) > 0:
                 return lowest_energy
             elif len(lowest_site) == 0: # no converged sites
                 print(f"{intermediate} on {surface} at {bias} has no converged sites")    
                 return 1000
     
-    def get_lowest_site(self, site_data:dict) -> dict:
+    def get_lowest_site(self, surface:str, intermediate:str, bias:str) -> dict:
+        site_data = self.all_data[surface]["adsorbed"][intermediate][bias]
         lowest_energy = 1000
         lowest_site = ""
         for site, data in site_data.items():
@@ -41,6 +45,7 @@ class Data_Parser:
                 continue
         return lowest_site, lowest_energy
     
+
     def get_sites_data(self, surface:str, bias:str, intermediate:str) -> dict:
         return self.all_data[surface]["adsorbed"][intermediate][bias]
     
@@ -52,4 +57,7 @@ class Data_Parser:
     
     def get_intermediates(self, surface):
         return [i for i in self.all_data[surface]["adsorbed"].keys()]
-        
+    
+
+    def get_contcar(self, surface, bias, intermediate, site) -> dict:
+        return self.all_data[surface]["adsorbed"][intermediate][bias][site]["contcar"]

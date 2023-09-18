@@ -601,7 +601,7 @@ class Pathway:
             path_list = self.pathways[ipath]
             #get material, bias, site and free energy setting from parameters 
             #input by user in add_pathway()
-            #TODO don't design the material addition logic like a goddamn orangutan
+            #TODO don't design the material addition logic like an orangutan
             parameters_list.append(tuple([path_list[0], path_list[2], path_list[3], path_list[4]]))
             
         # Find adsorbate energy
