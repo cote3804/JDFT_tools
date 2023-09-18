@@ -56,6 +56,8 @@ class Data_Parser:
         return biases
     
     def get_intermediates(self, surface):
+        if "adsorbed" not in self.all_data[surface].keys():
+            return []
         return [i for i in self.all_data[surface]["adsorbed"].keys()]
     
 
