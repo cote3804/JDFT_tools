@@ -60,6 +60,15 @@ class Data_Parser:
             return []
         return [i for i in self.all_data[surface]["adsorbed"].keys()]
     
+    def check_surface_convergence(self, surface:str, bias:str) -> bool:
+        # check whether surface calc converged
+        print(surface, self.all_data[surface]["surf"][bias]["converged"])
+        return bool(self.all_data[surface]["surf"][bias]["converged"])
+
+    def check_any_surface_convergence(self, surface:str) -> bool:
+        # check wheter surface converged for any bias
+        truth = any([bool(self.all_data[surface]["surf"][bias]["converged"]) for bias in self.all_data[surface]["surf"].keys()])
+        return truth
 
     def get_contcar(self, surface, bias, intermediate, site) -> dict:
         return self.all_data[surface]["adsorbed"][intermediate][bias][site]["contcar"]

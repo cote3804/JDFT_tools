@@ -44,6 +44,10 @@ class Material:
     def get_surface_data(self, surface):
         return self.energies[surface]
 
+    def converged_surfaces(self):
+        converged_surfaces = [surface for surface in self.energies.keys()]
+        return converged_surfaces
+
 
 class Materials:
     def __init__(self, data:Data_Parser, bulks:list) -> None:
@@ -80,6 +84,12 @@ class Materials:
     def get_bias_energy(self, surface:str, bulk:str):
         bulk_name = surface.split("_")[0]
         material = self.get_material(bulk_name)
+
+    def converged_surfaces(self):
+        converged_surfaces = []
+        for material in self.materials:
+            converged_surfaces.extend(material.converged_surfaces())
+        return converged_surfaces
         
 
 

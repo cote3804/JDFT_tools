@@ -27,7 +27,7 @@ class Analyzer:
     def get_data(self) -> dict:
         data_dict = {}
         for material in self.materials.materials:
-            for surface in material.surfaces:
+            for surface in material.converged_surfaces():
                 data_dict.update({surface:material.get_surface_data(surface)})
         return data_dict
     
@@ -43,7 +43,7 @@ class Analyzer:
         FED_energies = {}
         bias = self.bias_float_to_str(bias)
         for material in self.materials.materials:
-            for surface in material.surfaces:
+            for surface in material.converged_surfaces():
                 FED_energies[surface] = material.get_FED_energy(surface, bias, referenced=referenced)
         
         return FED_energies
@@ -60,3 +60,13 @@ class Analyzer:
         struct = Structure.from_dict(struct_dict)
         atoms = AseAtomsAdaptor.get_atoms(struct)
         view(atoms)
+
+    def get_spans(self) -> dict:
+        pass
+    #TODO implement reaction network graph theory stuff
+    
+    def get_binding_energies(self, bias, reaction="NRR") -> dict:
+        calculator = Calculator(self.data, reaction)
+        bias = self.bias_float_to_str(bias)
+        binding_energies = calculator.calculate_binding_energies(self.materials, bias)
+        return binding_energies

@@ -19,7 +19,7 @@ class Calculator:
         adsorbed_energy = self.data.get_adsorbed_energy(surface, bias, intermediate)
         reference_energy = self.reaction.reference_energy(intermediate, bias, self.ev)
         calculated_energy = adsorbed_energy + reference_energy
-        print(calculated_energy, adsorbed_energy, reference_energy, surface, intermediate, bias, site)
+        # print(calculated_energy, adsorbed_energy, reference_energy, surface, intermediate, bias, site)
         return calculated_energy * self.ev
     
     def terminal_energies(self, surface:str, bias:str) -> (float, float):
@@ -32,21 +32,35 @@ class Calculator:
         energies = {}
         surfaces = material.surfaces
         for surface in surfaces:
-            energies[surface] = {}
-            energies[surface]["initial"] = {}
-            energies[surface]["final"] = {}
-            for intermediate in self.reaction.find_reaction_intermediates(self.data, surface):
-                bias_energies = {}
-                for bias in self.data.get_intermediate_biases(surface, intermediate):
-                    bias_energies[bias] = {}
-                    for site in self.data.get_sites_data(surface, bias, intermediate).keys():
-                        calculated_energy = self.intermediate_energy(surface, intermediate, bias, site)
-                        bias_energies[bias].update({site: calculated_energy})
-                    energies[surface].update({intermediate: bias_energies})
-                    energies[surface]["initial"].update({bias: self.terminal_energies(surface, bias)[0]})
-                    energies[surface]["final"].update({bias: self.terminal_energies(surface, bias)[1]})
+            if self.data.check_any_surface_convergence(surface) == False:
+                print(f"{surface} has no converged sites")
+                continue
+            elif self.data.check_any_surface_convergence(surface) == True:
+                energies[surface] = {}
+                energies[surface]["initial"] = {}
+                energies[surface]["final"] = {}
+                for intermediate in self.reaction.find_reaction_intermediates(self.data, surface):
+                    bias_energies = {}
+                    for bias in self.data.get_intermediate_biases(surface, intermediate):
+                        bias_energies[bias] = {}
+                        for site in self.data.get_sites_data(surface, bias, intermediate).keys():
+                            calculated_energy = self.intermediate_energy(surface, intermediate, bias, site)
+                            bias_energies[bias].update({site: calculated_energy})
+                        energies[surface].update({intermediate: bias_energies})
+                        energies[surface]["initial"].update({bias: self.terminal_energies(surface, bias)[0]})
+                        energies[surface]["final"].update({bias: self.terminal_energies(surface, bias)[1]})
         material.energies = energies
 
+    def calculate_binding_energies(self, materials:Materials, bias='0.00V') -> dict:
+        binding_energies = {}
+        for material in materials.materials:
+            for surface in material.converged_surfaces():
+                reference_molecule, reference_energy = self.reaction.binding_reference(self.ev)
+                surface_energy = self.data.get_surface_energy(surface, bias)
+                bound_energy = self.data.get_adsorbed_energy(surface, bias, reference_molecule)
+                binding_energy = (bound_energy - (reference_energy + surface_energy)) * self.ev
+                binding_energies[surface] = binding_energy
+        return binding_energies
 #TODO Don't need to define list of intermediates in both the References and Reaction
 # objects
 
@@ -72,6 +86,9 @@ class Reaction:
         
         data_intermediates = data.get_intermediates(surface)
         return [i for i in data_intermediates if i in self.intermediates]
+    
+    def binding_reference(self, ev):
+        return self.references.get_binder(ev)
 
 class References:
     def __init__(self, reaction:str) -> None:
@@ -83,12 +100,15 @@ class References:
         self.reaction_terminations = {"NRR":{"initial":{"N2":1, "H+":6}, "final":{"NH3":2}}
             }
         self.reaction = reaction
+        self.binders = {"NRR": {"N": {"N2": 0.5}}}
         
     def get_references(self, intermediate):
         pass
         
     
     def get_intermediate_references(self, intermediate, bias, ev):
+        if bias == 'No_bias':
+            bias = '0.00V' # convert bias to zero so that it isn't used in the reference calculation
         reference_energy = 0
         bias = self.bias_string_to_float(bias)
         mu = self.bias_to_mu(bias, ev)
@@ -98,14 +118,16 @@ class References:
                                 - self.reference_energies[molecule]["nelec"] * mu)
                                  ) * quantity
             # print(molecule, quantity)
-            print("references for ", intermediate, ": ", reference_energy, " ", molecule, " ", quantity)
-            print( "MuN: " , mu * self.reference_energies[molecule]['nelec'])
-        print(reference_energy)
+            # print("references for ", intermediate, ": ", reference_energy, " ", molecule, " ", quantity)
+            # print( "MuN: " , mu * self.reference_energies[molecule]['nelec'])
+        # print(reference_energy)
         return reference_energy
     
     #TODO: these should be the same method
 
     def get_termination_reference(self, termination, bias, ev):
+        if bias == 'No_bias':
+            bias = '0.00V' # convert bias to zero so that it isn't used in the reference calculation
         reference_energy = 0
         bias = self.bias_string_to_float(bias)
         mu = self.bias_to_mu(bias, ev)
@@ -113,8 +135,8 @@ class References:
             reference_energy += ((self.reference_energies[molecule]["G"]
                                 - self.reference_energies[molecule]["nelec"] * mu)
                                  ) * quantity
-            print("references for ", termination, ": ", reference_energy, " ", molecule, " ", quantity)
-            print( "MuN: " , mu * self.reference_energies[molecule]['nelec'], mu)
+            # print("references for ", termination, ": ", reference_energy, " ", molecule, " ", quantity)
+            # print( "MuN: " , mu * self.reference_energies[molecule]['nelec'], mu)
         return reference_energy
     
     def bias_string_to_float(self, bias):
@@ -122,3 +144,10 @@ class References:
     
     def bias_to_mu(self, bias:int, ev:float) -> float:
         return (-bias) / ev
+    
+    def get_binder(self, ev) -> (str,float):
+        molecule = list(self.binders[self.reaction].keys())[0]
+        reference_energy = 0
+        for ref_molecule, quantity in self.binders[self.reaction][molecule].items():
+            reference_energy += self.reference_energies[ref_molecule]["G"] * quantity
+        return molecule, reference_energy
