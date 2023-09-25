@@ -5,7 +5,7 @@ import json
 class Data_Parser:
     def __init__(self, data_path, filename="all_data.json") -> None:
         with open(os.path.join(data_path,filename),'r') as f:
-            self.all_data = json.load(f) # load in all_data as dict
+            self.all_data = json.load(f,cls=MontyDecoder) # load in all_data as dict
 
     def get_surfaces(self, bulk) -> list:
         surfaces = []
@@ -26,11 +26,12 @@ class Data_Parser:
             return sites_data[site]["final_energy"] 
         elif site == None:
             lowest_site, lowest_energy = self.get_lowest_site(surface, intermediate, bias)
+            print("lowest site", lowest_site)
             if len(lowest_site) > 0:
                 return lowest_energy
             elif len(lowest_site) == 0: # no converged sites
                 print(f"{intermediate} on {surface} at {bias} has no converged sites")    
-                return 1000
+                return None
     
     def get_lowest_site(self, surface:str, intermediate:str, bias:str) -> dict:
         site_data = self.all_data[surface]["adsorbed"][intermediate][bias]
@@ -44,7 +45,6 @@ class Data_Parser:
             elif "final_energy" not in data.keys():
                 continue
         return lowest_site, lowest_energy
-    
 
     def get_sites_data(self, surface:str, bias:str, intermediate:str) -> dict:
         return self.all_data[surface]["adsorbed"][intermediate][bias]
@@ -69,6 +69,25 @@ class Data_Parser:
         # check wheter surface converged for any bias
         truth = any([bool(self.all_data[surface]["surf"][bias]["converged"]) for bias in self.all_data[surface]["surf"].keys()])
         return truth
+    
+    def check_adsorbed_convergence(self, surface:str, bias:str, intermediate:str) -> bool:
+        if self.check_if_surface_has_adsorbed(surface) == False:
+            return False
+        intermediates = self.get_intermediates(surface)
+        if intermediate not in intermediates: 
+            return False
+        for site, data in self.get_sites_data(surface, bias, intermediate).items():
+            if data["converged"] == False:
+                return False
+            else: # if there are no converged sites, return False
+                return True
 
     def get_contcar(self, surface, bias, intermediate, site) -> dict:
         return self.all_data[surface]["adsorbed"][intermediate][bias][site]["contcar"]
+    
+    def check_if_surface_has_adsorbed(self, surface) -> bool:
+        if "adsorbed" in self.all_data[surface].keys():
+            return True
+        else:
+            return False
+    

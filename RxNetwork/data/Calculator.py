@@ -1,5 +1,5 @@
 from data.Data_Parser import Data_Parser
-from data.Materials import Material, Materials
+from data.Materials import Materials, Material
 
 class Calculator:
     def __init__(self, data:Data_Parser, reaction:str, ev=True) -> None:
@@ -10,25 +10,31 @@ class Calculator:
         elif ev == False:
             self.ev = 1
     
-    def calculate_surface_properties(self, materials:Materials) -> None:
+    def calculate_surface_properties(self, materials) -> None:
         surface_properties = {}
         for material in materials.materials:
             self.set_material_energies(material)
             
     def intermediate_energy(self, surface:str, intermediate:str, bias:str, site:str) -> float:
-        adsorbed_energy = self.data.get_adsorbed_energy(surface, bias, intermediate)
-        reference_energy = self.reaction.reference_energy(intermediate, bias, self.ev)
-        calculated_energy = adsorbed_energy + reference_energy
-        # print(calculated_energy, adsorbed_energy, reference_energy, surface, intermediate, bias, site)
-        return calculated_energy * self.ev
+        converged = self.data.check_adsorbed_convergence(surface, bias, intermediate)
+        if converged == False:
+            return None
+        elif converged == True:
+            adsorbed_energy = self.data.get_adsorbed_energy(surface, bias, intermediate)
+            reference_energy = self.reaction.reference_energy(intermediate, bias, self.ev)
+            calculated_energy = adsorbed_energy + reference_energy
+            # print(calculated_energy, adsorbed_energy, reference_energy, surface, intermediate, bias, site)
+            return calculated_energy * self.ev
     
     def terminal_energies(self, surface:str, bias:str) -> (float, float):
         surface_energy = self.data.get_surface_energy(surface, bias) * self.ev
         initial_energy = self.reaction.reference_energy("initial", bias, self.ev) * self.ev
+        print(bias, initial_energy)
         final_energy = self.reaction.reference_energy("final", bias, self.ev) * self.ev
+        print(final_energy)
         return (surface_energy + initial_energy), (surface_energy + final_energy)
 
-    def set_material_energies(self, material: Material) -> None:
+    def set_material_energies(self, material) -> None:
         energies = {}
         surfaces = material.surfaces
         for surface in surfaces:
@@ -45,6 +51,7 @@ class Calculator:
                         bias_energies[bias] = {}
                         for site in self.data.get_sites_data(surface, bias, intermediate).keys():
                             calculated_energy = self.intermediate_energy(surface, intermediate, bias, site)
+                            print(intermediate, bias, calculated_energy)
                             bias_energies[bias].update({site: calculated_energy})
                         energies[surface].update({intermediate: bias_energies})
                         energies[surface]["initial"].update({bias: self.terminal_energies(surface, bias)[0]})
@@ -56,6 +63,8 @@ class Calculator:
         for material in materials.materials:
             for surface in material.converged_surfaces():
                 reference_molecule, reference_energy = self.reaction.binding_reference(self.ev)
+                if self.data.check_adsorbed_convergence(surface, bias, "N") == False:
+                    continue
                 surface_energy = self.data.get_surface_energy(surface, bias)
                 bound_energy = self.data.get_adsorbed_energy(surface, bias, reference_molecule)
                 binding_energy = (bound_energy - (reference_energy + surface_energy)) * self.ev
@@ -151,3 +160,4 @@ class References:
         for ref_molecule, quantity in self.binders[self.reaction][molecule].items():
             reference_energy += self.reference_energies[ref_molecule]["G"] * quantity
         return molecule, reference_energy
+    

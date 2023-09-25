@@ -1,5 +1,5 @@
-
 from data.Data_Parser import Data_Parser
+# from data.Calculator import Calculator, Reaction
 
 # Material class to store data with each material
 
@@ -7,9 +7,10 @@ class Material:
     def __init__(self, bulk_name, data: Data_Parser):
         self.bulk_name = bulk_name
         self.surfaces = data.get_surfaces(self.bulk_name)
+        self.data = data
         self.energies = {}
 
-    def get_FED_energy(self, surface:str, bias:str, referenced:str):
+    def get_FED_energy(self, surface:str, bias:str, referenced="final"):
         if referenced == "final":
             reference_energy = self.energies[surface]["final"][bias]
         elif referenced == "initial":
@@ -18,7 +19,11 @@ class Material:
         surface_energy = self.energies[surface]
         for intermediate in surface_energy.keys():
             if intermediate not in ["initial", "final"]:
+                if self.data.check_adsorbed_convergence(surface, bias, intermediate) == False:
+                    continue
                 FED_energy = min([E for (s,E) in surface_energy[intermediate][bias].items()])
+                print([E for (s,E) in surface_energy[intermediate][bias].items()])
+                print(intermediate, FED_energy, reference_energy)
                 FED_energies[intermediate] = FED_energy - reference_energy
             elif intermediate in ["initial", "final"]:
                 continue
@@ -47,6 +52,31 @@ class Material:
     def converged_surfaces(self):
         converged_surfaces = [surface for surface in self.energies.keys()]
         return converged_surfaces
+    
+    def get_converged_intermediates(self):
+        intermediates = {}
+        for surface in self.energies.keys():
+            intermediates[surface] = []
+            for intermediate in self.energies[surface].keys():
+                if intermediate not in ["initial", "final"] and self.check_if_intermediate_has_converged_site(surface, intermediate):
+                    intermediates[surface].append(intermediate)
+        return intermediates    
+    
+    def check_if_intermediate_has_converged_site(self, surface, intermediate):
+        # This will go through the energies data and check if any of the sites have converged
+        # It does this by storing true in a list if the type is not None.
+        # If any of the sites have converged, then the list will contain a True value
+        # and calling any() on the list will return True
+        truth_list = []
+        for bias, bias_data in self.energies[surface][intermediate].items():
+            for site, site_energy in bias_data.items():
+                truth_list.append(site_energy != None)
+        return any(truth_list)
+    
+    def get_biases(self, surface:str) -> list:
+        # Returns a list of biases for a given surface. Checks first intermediate it finds and then returns the biases
+        for intermediate in self.energies[surface].keys():
+            return [bias for bias in self.energies[surface][intermediate].keys()]
 
 
 class Materials:
