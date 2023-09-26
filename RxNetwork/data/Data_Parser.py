@@ -26,12 +26,15 @@ class Data_Parser:
             return sites_data[site]["final_energy"] 
         elif site == None:
             lowest_site, lowest_energy = self.get_lowest_site(surface, intermediate, bias)
-            print("lowest site", lowest_site)
             if len(lowest_site) > 0:
                 return lowest_energy
             elif len(lowest_site) == 0: # no converged sites
                 print(f"{intermediate} on {surface} at {bias} has no converged sites")    
                 return None
+    
+    def get_surface_biases(self, surface:str) -> list:
+        # Checks which biases a surface has converged at
+        return [bias for bias in self.all_data[surface]["surf"].keys() if bool(self.all_data[surface]["surf"][bias]["converged"]) == True]
     
     def get_lowest_site(self, surface:str, intermediate:str, bias:str) -> dict:
         site_data = self.all_data[surface]["adsorbed"][intermediate][bias]
@@ -62,7 +65,7 @@ class Data_Parser:
     
     def check_surface_convergence(self, surface:str, bias:str) -> bool:
         # check whether surface calc converged
-        print(surface, self.all_data[surface]["surf"][bias]["converged"])
+        # print(surface, self.all_data[surface]["surf"][bias]["converged"])
         return bool(self.all_data[surface]["surf"][bias]["converged"])
 
     def check_any_surface_convergence(self, surface:str) -> bool:
@@ -71,16 +74,24 @@ class Data_Parser:
         return truth
     
     def check_adsorbed_convergence(self, surface:str, bias:str, intermediate:str) -> bool:
+        converged = []
         if self.check_if_surface_has_adsorbed(surface) == False:
             return False
         intermediates = self.get_intermediates(surface)
         if intermediate not in intermediates: 
             return False
         for site, data in self.get_sites_data(surface, bias, intermediate).items():
-            if data["converged"] == False:
-                return False
-            else: # if there are no converged sites, return False
+            converged.append(bool(data["converged"]))
+        return any(converged)
+            
+    def check_adsorbed_site_convergence(self, surface:str, bias:str, intermediate:str, site:str) -> bool:
+        if "converged" in self.all_data[surface]["adsorbed"][intermediate][bias][site].keys():
+            if self.all_data[surface]["adsorbed"][intermediate][bias][site]["converged"] == True:
                 return True
+            else:
+                return False
+        else:
+            return False
 
     def get_contcar(self, surface, bias, intermediate, site) -> dict:
         return self.all_data[surface]["adsorbed"][intermediate][bias][site]["contcar"]

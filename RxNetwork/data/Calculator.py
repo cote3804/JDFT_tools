@@ -16,7 +16,7 @@ class Calculator:
             self.set_material_energies(material)
             
     def intermediate_energy(self, surface:str, intermediate:str, bias:str, site:str) -> float:
-        converged = self.data.check_adsorbed_convergence(surface, bias, intermediate)
+        converged = self.data.check_adsorbed_site_convergence(surface, bias, intermediate, site)
         if converged == False:
             return None
         elif converged == True:
@@ -29,9 +29,9 @@ class Calculator:
     def terminal_energies(self, surface:str, bias:str) -> (float, float):
         surface_energy = self.data.get_surface_energy(surface, bias) * self.ev
         initial_energy = self.reaction.reference_energy("initial", bias, self.ev) * self.ev
-        print(bias, initial_energy)
+        # print(bias, initial_energy)
         final_energy = self.reaction.reference_energy("final", bias, self.ev) * self.ev
-        print(final_energy)
+        # print(final_energy)
         return (surface_energy + initial_energy), (surface_energy + final_energy)
 
     def set_material_energies(self, material) -> None:
@@ -51,11 +51,12 @@ class Calculator:
                         bias_energies[bias] = {}
                         for site in self.data.get_sites_data(surface, bias, intermediate).keys():
                             calculated_energy = self.intermediate_energy(surface, intermediate, bias, site)
-                            print(intermediate, bias, calculated_energy)
+                            print(intermediate, bias, site, calculated_energy)
                             bias_energies[bias].update({site: calculated_energy})
                         energies[surface].update({intermediate: bias_energies})
-                        energies[surface]["initial"].update({bias: self.terminal_energies(surface, bias)[0]})
-                        energies[surface]["final"].update({bias: self.terminal_energies(surface, bias)[1]})
+                for bias in self.data.get_surface_biases(surface):
+                    energies[surface]["initial"].update({bias: self.terminal_energies(surface, bias)[0]})
+                    energies[surface]["final"].update({bias: self.terminal_energies(surface, bias)[1]})
         material.energies = energies
 
     def calculate_binding_energies(self, materials:Materials, bias='0.00V') -> dict:

@@ -11,19 +11,24 @@ class Material:
         self.energies = {}
 
     def get_FED_energy(self, surface:str, bias:str, referenced="final"):
-        if referenced == "final":
-            reference_energy = self.energies[surface]["final"][bias]
-        elif referenced == "initial":
-            reference_energy = self.energies[surface]["initial"][bias]
+        if self.data.check_surface_convergence(surface, bias) == False:
+                print(f"no converged surfaces for {surface} at {bias}")
+                return None
+        elif self.data.check_surface_convergence(surface, bias) == True:
+            if referenced == "final":
+                reference_energy = self.energies[surface]["final"][bias]
+            elif referenced == "initial":
+                reference_energy = self.energies[surface]["initial"][bias]
         FED_energies = {}
         surface_energy = self.energies[surface]
         for intermediate in surface_energy.keys():
             if intermediate not in ["initial", "final"]:
                 if self.data.check_adsorbed_convergence(surface, bias, intermediate) == False:
                     continue
-                FED_energy = min([E for (s,E) in surface_energy[intermediate][bias].items()])
-                print([E for (s,E) in surface_energy[intermediate][bias].items()])
-                print(intermediate, FED_energy, reference_energy)
+                float_energies = [i for i in surface_energy[intermediate][bias].values() if type(i) == float]
+                print(float_energies)
+                # float_energies is needed to filter out the None values from unconverged calculations
+                FED_energy = min(float_energies)
                 FED_energies[intermediate] = FED_energy - reference_energy
             elif intermediate in ["initial", "final"]:
                 continue
