@@ -114,7 +114,8 @@ class Materials:
             if material.bulk_name == bulk:
                 return material
             else:
-                raise Exception(f"material {bulk} not previously initialized")
+                pass
+                # raise Exception(f"material {bulk} not previously initialized")
 
     def get_bias_energy(self, surface:str, bulk:str):
         bulk_name = surface.split("_")[0]
