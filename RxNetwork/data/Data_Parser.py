@@ -80,13 +80,23 @@ class Data_Parser:
         intermediates = self.get_intermediates(surface)
         if intermediate not in intermediates: 
             return False
-        for site, data in self.get_sites_data(surface, bias, intermediate).items():
-            converged.append(bool(data["converged"]))
-        return any(converged)
+        if self.check_adsorbed_bias(surface, bias, intermediate) == False:
+            return False
+        elif self.check_adsorbed_bias(surface, bias, intermediate) == True:
+            for site, data in self.get_sites_data(surface, bias, intermediate).items():
+                converged.append(bool(data["converged"]))
+            return any(converged)
+    
+    def check_adsorbed_bias(self, surface:str, bias:str, intermediate:str) -> bool:
+        # checks if a specified adosrbate on a surface has been calculated at a specified bias
+        if bias in self.all_data[surface]["adsorbed"][intermediate].keys():
+            return True
+        else:
+            return False
             
     def check_adsorbed_site_convergence(self, surface:str, bias:str, intermediate:str, site:str) -> bool:
         if "converged" in self.all_data[surface]["adsorbed"][intermediate][bias][site].keys():
-            if self.all_data[surface]["adsorbed"][intermediate][bias][site]["converged"] == True:
+            if bool(self.all_data[surface]["adsorbed"][intermediate][bias][site]["converged"]) == True:
                 return True
             else:
                 return False
@@ -102,3 +112,11 @@ class Data_Parser:
         else:
             return False
     
+    def get_converged_intermediates(self, surface, bias):
+        converged_intermediates = []
+        for intermediate in self.get_intermediates(surface):
+            if self.check_adsorbed_convergence(surface, bias, intermediate):
+                converged_intermediates.append(intermediate)
+            else:
+                continue
+        return converged_intermediates

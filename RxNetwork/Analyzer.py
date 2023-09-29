@@ -16,22 +16,25 @@ class Analyzer:
         self.bulks = bulks
         self.data = Data_Parser(data_path, filename)
 
-    def calculate_surface_properties(self, materials:Materials, ev=True): # this method needs to return a dictionary with all the necessary values for analysis
-        calculator = Calculator(self.data, reaction="NRR")
+    def calculate_surface_properties(self, materials:Materials, reaction:str, ev=True): # this method needs to return a dictionary with all the necessary values for analysis
+        calculator = Calculator(self.data, reaction=reaction)
         # surface_data = materials.get_surface_data()
         calculator.calculate_surface_properties(materials)
         # return materials
 
-    def do_analysis(self) -> None:
+    def do_analysis(self, reaction="NRR") -> None:
         materials = Materials(self.data, self.bulks)
         self.materials = materials
-        self.calculate_surface_properties(materials)
+        self.calculate_surface_properties(materials, reaction)
 
-    def get_data(self) -> dict:
+    def get_data(self, reaction:str) -> dict:
         data_dict = {}
-        for material in self.materials.materials:
-            for surface in material.converged_surfaces():
-                data_dict.update({surface:material.get_surface_data(surface)})
+        materials = Materials(self.data, self.bulks)
+        calculator = Calculator(self.data, reaction)
+        for material in materials.materials:
+            material_energy = calculator.calculate_material_energies(material)
+            for surface in material.surfaces:
+                data_dict.update({surface:material_energy[surface]})
         return data_dict
     
     def surface_data(self, surface:str) -> dict:
@@ -43,18 +46,22 @@ class Analyzer:
         
         
     def get_FED_energies(self, bias, referenced="final") -> dict:
+        calculator = Calculator(self.data, reaction="NRR")
         FED_energies = {}
         bias = self.bias_float_to_str(bias)
         for material in self.materials.materials:
             for surface in material.converged_surfaces():
-                FED_energies[surface] = material.get_FED_energy(surface, bias, referenced=referenced)
+                FED_energies[surface] = calculator.get_FED_energy(material, surface, bias, referenced=referenced)
         
         return FED_energies
     
-    def get_FED_energy(self, surface:str, bias:str, referenced="final") -> float:
+    def get_FED_energy(self, surface:str, bias:float, reaction:str, referenced="final") -> float:
+        calculator = Calculator(self.data, reaction)
+        bias = self.bias_float_to_str(bias)
         bulk = surface.split("_")[0]
-        material = self.materials.get_material(bulk)
-        return material.get_FED_energy(surface, bias, referenced=referenced)
+        materials = Materials(self.data, self.bulks)
+        material = materials.get_material(bulk)
+        return calculator.get_FED_energy(material, surface, bias, referenced=referenced)
     
     def bias_float_to_str(self, bias:float) -> str:
         return f"{bias:.2f}" + "V"
@@ -71,24 +78,31 @@ class Analyzer:
         view(atoms)
 
     def get_span(self, reaction:str, material:Material, surface:str, bias:float) -> dict:
-        network = Network(reaction)
-        network.add_data_to_nodes(material.get_FED_energy(surface, bias))
-        intermediates = material.get_converged_intermediates()
-        subgraph = network.connected_subgraph(intermediates[surface])
+        calculator = Calculator(self.data, reaction)
+        gmax, span = calculator.calculate_span(reaction, material, surface, bias)
+        # network = Network(reaction)
+        # network.add_data_to_nodes(material.get_FED_energy(surface, bias))
+        # intermediates = material.get_converged_intermediates()
+        # subgraph = network.connected_subgraph(intermediates[surface])
                 # network.reconnect(subgraph)
         # subgraph = network.connected_subgraph(intermediates)
-        return subgraph
+        # return subgraph
+        return gmax, span
     #TODO implement reaction network graph theory stuff
     
     def get_spans(self, reaction:str) -> dict:
-        network = Network(reaction)
+
+        # network = Network(reaction)
+        span_dict = {}
         for material in self.materials.materials:
             intermediates = material.get_converged_intermediates()
             for surface in intermediates.keys():
+                bias_dict = {}
                 for bias in material.get_biases(surface):
-                    FED_energy = self.get_FED_energy(surface, bias)
-                    span = self.get_span(reaction, material, surface, bias)
-        pass
+                    gmax, span = self.get_span(reaction, material, surface, bias)
+                    bias_dict[bias] = (gmax, span)
+                span_dict[surface] = bias_dict
+        return span_dict
         # method to get all spans for all the surfaces and biases
 
     def get_binding_energies(self, bias, reaction="NRR") -> dict:
@@ -98,8 +112,8 @@ class Analyzer:
         return binding_energies
     
     def plot_FED(self, reaction:str, surface:str, bias:float, referenced="final", color="#f00000", graph_objects=None) -> plt.Figure:
-        bias = self.bias_float_to_str(bias)
-        FED_energy = self.get_FED_energy(surface, bias, referenced=referenced)
+        # bias = self.bias_float_to_str(bias)
+        FED_energy = self.get_FED_energy(surface, bias, reaction, referenced=referenced)
         plotter = FED_plotter(reaction, FED_energy)
         fig, ax = plotter.plot(surface, bias, graph_objects=graph_objects, color=color)
         state_length = 1

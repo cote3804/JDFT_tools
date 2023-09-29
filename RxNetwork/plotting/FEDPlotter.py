@@ -2,48 +2,47 @@ from network.Network import Network
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib.lines import Line2D
+from data.Calculator import Reaction
 
 class FED_plotter:
 
     def __init__(self, reaction, FED_energy) -> None:
         self.reaction = reaction
         self.FED_energy = FED_energy
-        self.network = Network(reaction)
-        self.reaction_data = {"NRR": {"initial":(0,0), # tuple represents (index, pathway)
-                                      "N2": (1,0),
-                                      "N2H": (2,0),
-                                      "NNH2": (3,0),
-                                      "N": (4,0),
-                                      "NH": (5,0),
-                                      "NH2": (6,0),
-                                      "NH3": (7,0),
-                                      "final": (8,0),
-                                      "NHNH": (3,1),
-                                      "NHNH2": (4,1),
-                                      "NH2NH2": (5,1)}
+        # self.network = Network(reaction)
+        self.reaction_data = {"NRR": {"N2":(0,0), # tuple represents (index, pathway)
+                                      "N2*": (1,0),
+                                      "N2H*": (2,0),
+                                      "NNH2*": (3,0),
+                                      "N*": (4,0),
+                                      "NH*": (5,0),
+                                      "NH2*": (6,0),
+                                      "NH3*": (7,0),
+                                      "2NH3": (8,0),
+                                      "NHNH*": (3,1),
+                                      "NHNH2*": (4,1),
+                                      "NH2NH2*": (5,1)},
+                                "HER": {"2H+":(0,0),
+                                        "H*": (1,0),
+                                        "H2": (2,0)},
                                 }
-        self.label_data = {"NRR": {"initial":"N2",
-                                   "final": "NH3"}
-                                   }
     
     def plot(self, surface:str, bias:str, color="#f00000", linewidth=1, graph_objects=None):
         '''
         graph_objects is a tuple of (fig, ax) that can be passed through to add multiple plots to the same axis
         '''
+        reaction = Reaction(self.reaction)
+        initial_state, final_state = reaction.terminal_to_states()
         custom_line = [Line2D([0], [0], color=color, lw=4)]
         custom_label = f"{surface.split('_')[0]} ({surface.split('_')[1]}) {bias}"
         state_width = 1
         connector_width = 1/2
         ticks = []
         tick_labels = []
-        for i in range(self.reaction_data[self.reaction]["final"][0]):
+        for i in range(self.reaction_data[self.reaction][final_state][0]+1):
             ticks.append(i*(state_width+connector_width)+state_width/2)
             state = list(self.reaction_data[self.reaction].keys())[list(self.reaction_data[self.reaction].values()).index((i,0))]
-            if state in ['initial', 'final']:
-                label = self.label_data[self.reaction][state]
-                tick_labels.append(label)
-            elif state not in ['initial', 'final']:
-                tick_labels.append(f"{state}*")
+            tick_labels.append(f"{state}")
 
 
         if graph_objects == None:
@@ -68,7 +67,6 @@ class FED_plotter:
                         break
                     else:
                         pass
-                # print(list(self.reaction_data[self.reaction].values()))
                 # previous_state = list(self.reaction_data[self.reaction].keys())[list(self.reaction_data[self.reaction].values()).index(previous_state_tuple)]
                 # previous_energy = self.FED_energy[previous_state]
                 state_x_coords = [state_index*(state_width+connector_width), state_index*(state_width+connector_width)+state_width]

@@ -34,7 +34,7 @@ class Network():
         self.master_graph = build_master_graph(self.network_definition, reaction)
         # print(nx.adjacency_matrix(self.master_graph).todense())
         node_list = list(range(0, len(self.master_graph.nodes())))
-        print(self.master_graph.nodes())
+        # print(self.master_graph.nodes())
         # self.draw_graph(self.master_graph)
 
     def add_data_to_nodes(self, FED_energies:dict):
@@ -64,7 +64,7 @@ class Network():
         This is used to plot multiple pathways on the same FED plot
         """
         for cycle in nx.simple_cycles(self.master_graph):
-            print(cycle)
+            # print(cycle)
             remap = {} # dictionary to remap indices of the cycle
             for old_index in cycle:
                 remap[old_index] = None
@@ -91,15 +91,12 @@ class Network():
         A_master = nx.adjacency_matrix(self.master_graph, nodelist=node_list).todense()
         # odd_graph = nx.DiGraph(A_master)
         # self.draw_graph(odd_graph)
-        print(A_master)
         sub_node_list = list(sub_graph.nodes()).sort()
         A_sub = nx.adjacency_matrix(sub_graph, nodelist=sub_node_list).todense()
         odd_graph = nx.DiGraph(A_sub)
         # self.draw_graph(odd_graph)
-        print(A_sub)
         subgraph_node_indices = list(sub_graph.nodes())
         subgraph_node_indices.sort()
-        print(subgraph_node_indices)
         # new_array is an array full of zeros of the same size as the master graph adjacency matrix
         new_array = np.zeros(A_master.shape)
         # here I'm taking 2D a slice of new_array that corresponds to the indices of the subgraph
@@ -107,20 +104,16 @@ class Network():
         # This effectively creates an adjacency matrix that has the same size as the master graph, but with
         # zeros in the places where there are no nodes in the sub graph.
         new_array[np.ix_(subgraph_node_indices, subgraph_node_indices)] = A_sub
-        print(new_array)
         # here I'm creating a matrix that shows the differences between the adjacency matrix of the master graph and the new array
         # This will show where the subgraph is missing connections, enabling us to redraw them.
         mismatch = np.equal(new_array, A_master).astype(int)
-        print(mismatch)
         # I now get the indices of the places where the mismatch matrix is zero, signifying a missing connection
         mismatch_indices = np.where(mismatch == 0)
-        print("mismatch indices", mismatch_indices)
         pairs_to_add = []
         for x,y in zip(mismatch_indices[0], mismatch_indices[1]): 
             target_indices = np.where(mismatch[y,:] == 0)
             node_pairs = [(x, yy) for yy in target_indices[0]]
             pairs_to_add.append(node_pairs)
-        print(pairs_to_add)
         for pairs in pairs_to_add:
             for pair in pairs:
                 sub_graph.add_edge(pair[0], pair[1])

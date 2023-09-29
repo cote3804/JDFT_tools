@@ -11,6 +11,8 @@ class Material:
         self.energies = {}
 
     def get_FED_energy(self, surface:str, bias:str, referenced="final"):
+        pass
+        '''
         if self.data.check_surface_convergence(surface, bias) == False:
                 print(f"no converged surfaces for {surface} at {bias}")
                 return None
@@ -26,7 +28,6 @@ class Material:
                 if self.data.check_adsorbed_convergence(surface, bias, intermediate) == False:
                     continue
                 float_energies = [i for i in surface_energy[intermediate][bias].values() if type(i) == float]
-                print(float_energies)
                 # float_energies is needed to filter out the None values from unconverged calculations
                 FED_energy = min(float_energies)
                 FED_energies[intermediate] = FED_energy - reference_energy
@@ -35,6 +36,8 @@ class Material:
         FED_energies["initial"] = surface_energy["initial"][bias] - reference_energy
         FED_energies["final"] = surface_energy["final"][bias] - reference_energy
         return FED_energies
+        '''
+
     # @property
     # def surfaces(self) -> list:
     #     return self.surfaces
@@ -88,14 +91,6 @@ class Materials:
     def __init__(self, data:Data_Parser, bulks:list) -> None:
         self.bulks = bulks
         self.materials = [Material(bulk, data) for bulk in bulks] # creates list of Material objects
-
-    # @property
-    # def bulks(self) -> list:
-    #     return self.bulks
-    
-    # @bulks.setter
-    # def bulks(self, bulks:list) -> None:
-    #     self.bulks = bulks
 
     def get_surface_data(self, bulk:str) -> dict:
         surface_data = {}
