@@ -5,7 +5,7 @@ import json
 class Data_Parser:
     def __init__(self, data_path, filename="all_data.json") -> None:
         with open(os.path.join(data_path,filename),'r') as f:
-            self.all_data = json.load(f,cls=MontyDecoder) # load in all_data as dict
+            self.all_data = json.load(f) # load in all_data as dict
 
     def get_surfaces(self, bulk) -> list:
         surfaces = []
@@ -66,6 +66,8 @@ class Data_Parser:
     def check_surface_convergence(self, surface:str, bias:str) -> bool:
         # check whether surface calc converged
         # print(surface, self.all_data[surface]["surf"][bias]["converged"])
+        if 'surf' not in self.all_data[surface].keys():
+            return False
         return bool(self.all_data[surface]["surf"][bias]["converged"])
 
     def check_any_surface_convergence(self, surface:str) -> bool:

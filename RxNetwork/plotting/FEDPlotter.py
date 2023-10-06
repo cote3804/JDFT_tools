@@ -46,7 +46,7 @@ class FED_plotter:
 
 
         if graph_objects == None:
-            fig, ax = plt.subplots(dpi=300)
+            fig, ax = plt.subplots(dpi=300, figsize=(10,4))
         elif graph_objects != None: #ability to pass through an axis for adding multiple plots
             fig, ax = graph_objects 
 

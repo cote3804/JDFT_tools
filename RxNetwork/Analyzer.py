@@ -5,8 +5,8 @@ from data.Materials import Materials, Material
 from data.Calculator import Calculator
 from plotting.FEDPlotter import FED_plotter
 from network.Network import Network
-from pymatgen.core import Structure
-from pymatgen.io.ase import AseAtomsAdaptor
+# from pymatgen.core import Structure
+# from pymatgen.io.ase import AseAtomsAdaptor
 from ase.visualize import view
 from matplotlib import pyplot as plt
 

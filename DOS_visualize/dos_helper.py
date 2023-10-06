@@ -148,7 +148,7 @@ def get_plot(plotter, energy_lim=[-5, 5], density_lim=None, flip_axes = True, co
             plfill(x, np.zeros_like(x), y, color=colors[i % ncolors], label=label,
                               alpha = alpha[i % ncolors] if type(alpha) == list else alpha)
         else:
-            plplot(x, y, color=colors[i % ncolors], label=label, linewidth=1,
+            plplot(x, y, color=colors[i % ncolors], label=label,
                       alpha = alpha[i % ncolors] if type(alpha) == list else alpha)
         
 #        if not plotter.zero_at_efermi:
