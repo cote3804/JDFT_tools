@@ -109,7 +109,8 @@ class Analyzer:
     def get_binding_energies(self, bias, reaction="NRR") -> dict:
         calculator = Calculator(self.data, reaction)
         bias = self.bias_float_to_str(bias)
-        binding_energies = calculator.calculate_binding_energies(self.materials, bias)
+        materials = Materials(self.data, self.bulks)
+        binding_energies = calculator.calculate_binding_energies(materials, bias)
         return binding_energies
     
     def plot_FED(self, reaction:str, surface:str, bias:float, referenced="final", color="#f00000", graph_objects=None) -> plt.Figure:

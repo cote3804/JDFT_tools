@@ -90,7 +90,7 @@ class Calculator:
                 if self.data.check_adsorbed_convergence(surface, bias, "N") == False:
                     continue
                 surface_energy = self.data.get_surface_energy(surface, bias)
-                bound_energy = self.data.get_adsorbed_energy(surface, bias, reference_molecule)
+                bound_energy = self.data.get_adsorbed_energy(surface, bias, reference_molecule.strip('*'))
                 binding_energy = (bound_energy - (reference_energy + surface_energy)) * self.ev
                 binding_energies[surface] = binding_energy
         return binding_energies
