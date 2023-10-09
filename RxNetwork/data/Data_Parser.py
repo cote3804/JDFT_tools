@@ -122,3 +122,6 @@ class Data_Parser:
             else:
                 continue
         return converged_intermediates
+    
+    def get_converged_intermediates_at_all_biases(self, surface):
+        pass

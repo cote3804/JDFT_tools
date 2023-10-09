@@ -49,7 +49,8 @@ class Analyzer:
         calculator = Calculator(self.data, reaction="NRR")
         FED_energies = {}
         bias = self.bias_float_to_str(bias)
-        for material in self.materials.materials:
+        materials = Materials(self.data, self.bulks)
+        for material in materials.materials:
             for surface in material.converged_surfaces():
                 FED_energies[surface] = calculator.get_FED_energy(material, surface, bias, referenced=referenced)
         
@@ -65,17 +66,18 @@ class Analyzer:
     
     def bias_float_to_str(self, bias:float) -> str:
         return f"{bias:.2f}" + "V"
-                
-    def visualize_contcar(self, bias, surface, intermediate, site=None) -> None:
-        bias = self.bias_float_to_str(bias)
-        if site == None:
-            site, energy = self.data.get_lowest_site(surface, intermediate, bias)
+
+    #TODO get this pymatgen visualization issue working. Pymatgen from_dict() method is failing.   
+    # def visualize_contcar(self, bias, surface, intermediate, site=None) -> None:
+    #     bias = self.bias_float_to_str(bias)
+    #     if site == None:
+    #         site, energy = self.data.get_lowest_site(surface, intermediate, bias)
         
-        struct_dict = self.data.get_contcar(surface, bias, intermediate, site)
-        print(struct_dict)
-        struct = Structure.from_dict(struct_dict)
-        atoms = AseAtomsAdaptor.get_atoms(struct)
-        view(atoms)
+    #     struct_dict = self.data.get_contcar(surface, bias, intermediate, site)
+    #     print(struct_dict)
+    #     struct = Structure.from_dict(struct_dict)
+    #     atoms = AseAtomsAdaptor.get_atoms(struct)
+    #     view(atoms)
 
     def get_span(self, reaction:str, material:Material, surface:str, bias:float) -> dict:
         calculator = Calculator(self.data, reaction)
@@ -90,18 +92,17 @@ class Analyzer:
         return gmax, span
     #TODO implement reaction network graph theory stuff
     
-    def get_spans(self, reaction:str) -> dict:
+    def get_spans(self, reaction:str, bias=0) -> dict:
 
         # network = Network(reaction)
+        bias = self.bias_float_to_str(bias)
+        materials = Materials(self.data, self.bulks)
+        self.materials = materials
         span_dict = {}
-        for material in self.materials.materials:
-            intermediates = material.get_converged_intermediates()
-            for surface in intermediates.keys():
-                bias_dict = {}
-                for bias in material.get_biases(surface):
-                    gmax, span = self.get_span(reaction, material, surface, bias)
-                    bias_dict[bias] = (gmax, span)
-                span_dict[surface] = bias_dict
+        for material in materials.materials:
+            for surface in material.surfaces:
+                gmax, span = self.get_span(reaction, material, surface, bias)
+                span_dict.update({surface:{gmax,span}})
         return span_dict
         # method to get all spans for all the surfaces and biases
 

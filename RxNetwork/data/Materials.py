@@ -58,14 +58,14 @@ class Material:
         return self.energies[surface]
 
     def converged_surfaces(self):
-        converged_surfaces = [surface for surface in self.energies.keys()]
+        converged_surfaces = [surface for surface in self.surfaces if self.data.check_any_surface_convergence(surface) == True]
         return converged_surfaces
     
     def get_converged_intermediates(self):
         intermediates = {}
-        for surface in self.energies.keys():
+        for surface in self.surfaces:
             intermediates[surface] = []
-            for intermediate in self.energies[surface].keys():
+            for intermediate in self.data.get_converged_intermediates(surface):
                 if intermediate not in ["initial", "final"] and self.check_if_intermediate_has_converged_site(surface, intermediate):
                     intermediates[surface].append(intermediate)
         return intermediates    

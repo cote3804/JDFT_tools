@@ -1,6 +1,15 @@
 from data.Data_Parser import Data_Parser
 from data.Materials import Materials, Material
 
+# Adsorbed intermediates in the all_data are stored without the * symbol, but
+# intermdiate keys in the data structures in this script for calculating
+# reaction references are labeled with the * symbol. Whenever a reaction 
+# reference is being calculated, the * must be added to the intermediate string
+# from the all_data.
+
+#TODO move this explanation to a more logical spot. Maybe in the doc string for the Calculator class.
+
+
 class Calculator:
     def __init__(self, data:Data_Parser, reaction:str, ev=True) -> None:
         self.data = data
@@ -88,15 +97,18 @@ class Calculator:
     
     def calculate_span(self, reaction, material, surface, bias):
         reaction = Reaction(reaction)
-        intermediates = self.data.get_converged_intermediates(surface, bias)
+        intermediates = reaction.find_reaction_intermediates(self.data, surface)
+        intermediates = [f"{i}*" for i in intermediates] # convert intermediates to the format necessary for calculating references
         energies = []
         E_init, E_final = self.terminal_energies(surface, bias)
         E_rxn = E_final - E_init
-        energies.extend([E_init, E_final])
-        index_list = [reaction.intermediate_index("initial") , reaction.intermediate_index("final")]
+        print("E_rxn", E_rxn)
+        energies.extend([E_init, E_final]) # first two energies are initial and final energies
+        initial_state, final_state = reaction.terminal_to_states() # get the strings for the initial and final states
+        index_list = [reaction.intermediate_index(initial_state) , reaction.intermediate_index(final_state)] # set first two indices to initial and final
         for intermediate in intermediates:
-            min_site, min_energy = self.data.get_lowest_site(surface, intermediate, bias)
-            energies.append(self.intermediate_energy(surface, intermediate, bias, min_site))
+            min_site, min_energy = self.data.get_lowest_site(surface, intermediate.strip('*'), bias)
+            energies.append(self.intermediate_energy(surface, intermediate.strip('*'), bias, min_site))
             index_list.append(reaction.intermediate_index(intermediate))
         E_span = -0.0001
         span_indices = []
@@ -145,7 +157,7 @@ class Reaction:
         intermediate_dict = {"NRR": ["N2*", "N2H*", "NNH2*", "N*", "NH*", "NH2*", "NH3*"],
                              "HER": ["H*"]}
         self.references = References(reaction)
-        self.intermediates = intermediate_dict[reaction]
+        self.intermediates = intermediate_dict[reaction] # these intermediates don't include the terminal states
     
     def reference_energy(self, intermediate, bias, ev):
         if intermediate in ["initial", "final"]:
@@ -179,6 +191,7 @@ class Reaction:
     def terminal_to_states(self) -> tuple:
         # returns the state string for the initial and final states
         return (self.references.get_initial_state(), self.references.get_final_state())
+    
 
 
 
@@ -198,7 +211,7 @@ class References:
         self.termination_labels = {"NRR":{"initial":"N2", "final":"2NH3"},
                                    "HER":{"initial":"2H+", "final":"H2"}
                                 }
-        self.state_indices = {"NRR": {"initial":(0,0),
+        self.state_indices = {"NRR": {"N2":(0,0),
                                       "N2*": (1,0),
                                         "N2H*": (2,0),
                                         "NNH2*": (3,0),
@@ -206,11 +219,11 @@ class References:
                                         "NH*": (5,0),
                                         "NH2*": (6,0),
                                         "NH3*": (7,0),
-                                        "final": (8,0)
+                                        "2NH3": (8,0)
                                         },
-                                "HER": {"initial":(0,0),
+                                "HER": {"2H+":(0,0),
                                         "H*": (1,0),
-                                        "final": (2,0)
+                                        "H2": (2,0)
                                         }
                                 }
         self.reaction = reaction
