@@ -86,7 +86,8 @@ class Data_Parser:
             return False
         elif self.check_adsorbed_bias(surface, bias, intermediate) == True:
             for site, data in self.get_sites_data(surface, bias, intermediate).items():
-                converged.append(bool(data["converged"]))
+                if "converged" in data.keys():
+                    converged.append(bool(data["converged"]))
             return any(converged)
     
     def check_adsorbed_bias(self, surface:str, bias:str, intermediate:str) -> bool:
