@@ -71,7 +71,10 @@ class Data_Parser:
         return bool(self.all_data[surface]["surf"][bias]["converged"])
 
     def check_any_surface_convergence(self, surface:str) -> bool:
-        # check wheter surface converged for any bias
+        # check whether surface converged for any bias
+        print(self.all_data[surface].keys(), surface)
+        if 'surf' not in self.all_data[surface].keys():
+            return False
         truth = any([bool(self.all_data[surface]["surf"][bias]["converged"]) for bias in self.all_data[surface]["surf"].keys()])
         return truth
     
