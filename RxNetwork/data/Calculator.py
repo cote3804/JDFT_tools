@@ -95,18 +95,19 @@ class Calculator:
                 binding_energies[surface] = binding_energy
         return binding_energies
     
-    def calculate_span(self, reaction, material, surface, bias):
+    def calculate_span(self, reaction, surface, bias):
         reaction = Reaction(reaction)
         intermediates = reaction.find_reaction_intermediates(self.data, surface)
         intermediates = [f"{i}*" for i in intermediates] # convert intermediates to the format necessary for calculating references
         energies = []
         E_init, E_final = self.terminal_energies(surface, bias)
         E_rxn = E_final - E_init
-        print("E_rxn", E_rxn)
         energies.extend([E_init, E_final]) # first two energies are initial and final energies
         initial_state, final_state = reaction.terminal_to_states() # get the strings for the initial and final states
         index_list = [reaction.intermediate_index(initial_state) , reaction.intermediate_index(final_state)] # set first two indices to initial and final
         for intermediate in intermediates:
+            if self.data.check_adsorbed_convergence(surface, bias, intermediate.strip('*')) == False:
+                continue
             min_site, min_energy = self.data.get_lowest_site(surface, intermediate.strip('*'), bias)
             energies.append(self.intermediate_energy(surface, intermediate.strip('*'), bias, min_site))
             index_list.append(reaction.intermediate_index(intermediate))
@@ -119,8 +120,8 @@ class Calculator:
                         E_span = E_j - E_i
                         span_indices = [index_i, index_j]
                 elif index_i > index_j:
-                    if E_i - E_j - E_rxn > E_span:
-                        E_span = E_i - E_j - E_rxn
+                    if E_i - E_j + E_rxn > E_span:
+                        E_span = E_j - E_i + E_rxn
                         span_indices = [index_i, index_j]
         span_intermediates = (reaction.index_to_state(span_indices[0]), reaction.index_to_state(span_indices[1]))
         return E_span, span_intermediates

@@ -10,8 +10,14 @@ class Data_Parser:
     def get_surfaces(self, bulk) -> list:
         surfaces = []
         for mat_key in self.all_data.keys():
-            if mat_key.split("_")[0] == bulk and "_" in mat_key:
+            if "_" in mat_key:
+                index_key = mat_key.split("_")[1] # need to check that whatever follows the underscore is a surface facet and not a random tag
+                characters = [character for character in index_key.replace("-","")] # need to strip negatives from negative surface factes
+                is_surface = all([character.isdigit() for character in characters]) # check to see that all are numbers else it's not a surface
+            if mat_key.split("_")[0] == bulk and "_" in mat_key and is_surface:
                 surfaces.append(mat_key)
+        if len(surfaces) == 0:
+            raise Exception(f"no surfaces found for {bulk}")
         return surfaces
     
     def surface_data(self, surface) -> dict:
@@ -72,7 +78,6 @@ class Data_Parser:
 
     def check_any_surface_convergence(self, surface:str) -> bool:
         # check whether surface converged for any bias
-        print(self.all_data[surface].keys(), surface)
         if 'surf' not in self.all_data[surface].keys():
             return False
         truth = any([bool(self.all_data[surface]["surf"][bias]["converged"]) for bias in self.all_data[surface]["surf"].keys()])
@@ -129,3 +134,9 @@ class Data_Parser:
     
     def get_converged_intermediates_at_all_biases(self, surface):
         pass
+
+    def check_any_adsorbate_convergence(self, surface, bias):
+        if self.check_if_surface_has_adsorbed(surface) == False:
+            return False
+        truth = any([self.check_adsorbed_convergence(surface, bias, intermediate) for intermediate in self.get_intermediates(surface)])
+        return truth

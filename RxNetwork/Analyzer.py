@@ -79,9 +79,10 @@ class Analyzer:
     #     atoms = AseAtomsAdaptor.get_atoms(struct)
     #     view(atoms)
 
-    def get_span(self, reaction:str, material:Material, surface:str, bias:float) -> dict:
+    def get_span(self, reaction:str, surface:str, bias:float) -> dict:
+        bias = self.bias_float_to_str(bias)
         calculator = Calculator(self.data, reaction)
-        gmax, span = calculator.calculate_span(reaction, material, surface, bias)
+        gmax, span = calculator.calculate_span(reaction, surface, bias)
         # network = Network(reaction)
         # network.add_data_to_nodes(material.get_FED_energy(surface, bias))
         # intermediates = material.get_converged_intermediates()
@@ -95,14 +96,18 @@ class Analyzer:
     def get_spans(self, reaction:str, bias=0) -> dict:
 
         # network = Network(reaction)
-        bias = self.bias_float_to_str(bias)
         materials = Materials(self.data, self.bulks)
         self.materials = materials
         span_dict = {}
+        bias_str = self.bias_float_to_str(bias)
         for material in materials.materials:
             for surface in material.surfaces:
-                gmax, span = self.get_span(reaction, material, surface, bias)
-                span_dict.update({surface:{gmax,span}})
+                print(surface)
+                if self.data.check_any_adsorbate_convergence(surface, bias_str) == False:
+                    print(f"no converged adsorbates for {surface}")
+                    continue
+                gmax, span = self.get_span(reaction, surface, bias)
+                span_dict.update({surface:(gmax,span)})
         return span_dict
         # method to get all spans for all the surfaces and biases
 
@@ -123,6 +128,12 @@ class Analyzer:
         # for i in range(len(FED_energy)):
         # plt.show()
         return fig, ax
+
+    def get_sites_data(self, surface, bias, adsorbate):
+        return self.data.get_sites_data(surface, bias, adsorbate)
+
+    def get_min_site(self, surface, bias, adsorbate):
+        return self.data.get_lowest_site(surface, adsorbate, bias)
 
     def save_data(self, path, filename): # save data to json
         pass
