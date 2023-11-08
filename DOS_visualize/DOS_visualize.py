@@ -103,7 +103,6 @@ class DOS_visualize:
         nplots = len(plot_strings.keys())
         fig, axes = plt.subplots(1, nplots, figsize = (10, 5), sharey = 'row',
                                  dpi = 500 if save else 100)
-        print("plot strings", plot_strings)
         plot_colors = []
         if savename is None:
             savename = 'Dos_Plot_{self.file[0])'
@@ -166,13 +165,12 @@ class DOS_visualize:
                             dens_range = [-(0.001*max_dens),(0.001*max_dens)]
                             # dens_range = [-.05,0.05]
                             name = f'{pdos[0]} {pdos[1]} {spin}'
-                    if dos_type == 'element': ###################Element
+                    if dos_type == 'element': ###################Element #TODO fix element
                         if pdos[1] == 'all':  ######################all
                             element = pdos[0]
                             initial = False
                             accepted_orbitals = ['s','p','d','f']
                             for atom in jdos[spin]:
-                                print(atom)
                                 if atom.split('_')[0] == element:
                                     for orbit in jdos[spin][atom]:
                                         if initial is False:
@@ -180,6 +178,8 @@ class DOS_visualize:
                                             initial = True
                                         if orbit in accepted_orbitals:
                                             dens_add += np.array(jdos[spin][atom][orbit])
+                                elif atom in ['Energy','Total']:
+                                    continue
                             dens = dens_add
                             energy, density = fill_zeros(jdos[spin]['Energy'], dens, zero_width)
                             energy = [e + efermi for e in energy]
@@ -198,7 +198,7 @@ class DOS_visualize:
                             energy, density = fill_zeros(jdos[spin]['Energy'], dens, zero_width)
                             energy = [e + efermi for e in energy]
                             name = f'{pdos[0]} {pdos[1]} {spin}'
-                            
+
                 pmg_jdos = dos.Dos(efermi, #if center_fermi else 0.0, 
                                        energy,
                                        {Spin.up if spin == 'up' else Spin.down: density})
@@ -240,10 +240,12 @@ class DOS_visualize:
 
 if __name__ == '__main__':   
 
-    path = 'C:\\Users\\coopy\\OneDrive - UCB-O365\\Desktop\\temp'
+    path = 'C:\\Users\\coopy\\OneDrive - UCB-O365\\Research\\Binaries\\DOS'
     ads_files = ["jpdos_0V.json", "jpdos_5V.json"]
     surf_files = ["jpdos_surf_0V.json", "jpdos_surf_5V.json"]
     endon_files = ["jpdos_endon_0V.json", "jpdos_endon_5V.json"]
+    NH_file = ["jpdos_NH_0V.json"]
+    TaB_file = ["jpdos_TaB_surf_0V.json", "jpdos_TaB_N2_0V.json","jpdos_TaB_N2H_0V.json","jpdos_TaB_NH_0V.json", "jpdos_TaB_NH3_0V.json"]
     ############ Place test code here ###############        
     # dos_object = DOS_visualize(files=['jpdos.json'], 
     #                            Atoms=[['Total'],['Ir','Ir_2'],['Ir_20','Ir_21']],
@@ -255,60 +257,88 @@ if __name__ == '__main__':
     #                             orbitals=[['p'],['all'],[['d'],[ 'p']]],
     #                             path='C:/Users/coopy/OneDrive - UCB-O365/Desktop/temp')
 
-    V_dos = DOS_visualize(files=['jpdos.json'], 
-                            Atoms=[['V_23', 'V_24', 'V_25', 'V_26', 'N_1', 'N_2']],
-                            orbitals = [[['d'],['d'],['d'],['d'],['p'],['p']]],
-                            path=path
-    )
+    # V_dos = DOS_visualize(files=['jpdos_V_N2.json'], 
+    #                         Atoms=[['V_23', 'V_24', 'V_25', 'V_26', 'N_1', 'N_2']],
+    #                         orbitals = [[['d'],['d'],['d'],['d'],['p'],['p']]],
+    #                         path=path
+    # )
 
-    V_N2_dos = DOS_visualize(files=['jpdos.json'], 
-                        Atoms=[[ 'N_1', 'N_2']],
-                        orbitals = [[['p'],['p']]],
-                        path=path
-    )
+    # V_N2_dos = DOS_visualize(files=['jpdos_V_N2.json'], 
+    #                     Atoms=[[ 'N_1', 'N_2']],
+    #                     orbitals = [[['p'],['p']]],
+    #                     path=path
+    # )
 
-    Ti_sideon_dos = DOS_visualize(files=ads_files,
-                                Atoms=[['N_2', 'N_1','Ti_7','Ti_8'], ['N_2', 'N_1','Ti_7','Ti_8']],
-                                orbitals=[[['p'], ['p'],['d'],['d']], [['p'], ['p'],['d'],['d']]],
-                                path=path
-    )
+    # Ti_sideon_dos = DOS_visualize(files=ads_files,
+    #                             Atoms=[['N_2', 'N_1','Ti_7','Ti_8'], ['N_2', 'N_1','Ti_7','Ti_8']],
+    #                             orbitals=[[['p'], ['p'],['d'],['d']], [['p'], ['p'],['d'],['d']]],
+    #                             path=path
+    # )
 
-    Ti_NH3_dos = DOS_visualize(files=ads_files,
-                               Atoms=
+    # Ti_NH_dos = DOS_visualize(files=['jpdos_surf_0V.json','jpdos_NH_0V.json','jpdos_NH_mol_0V.json'],
+    #                            Atoms=[['Ti_7','Ti_8'], ['Ti_7','Ti_8','N_1','H_1'], ['N']],
+    #                            orbitals=[[['d'],['d']],[['d'],['d'],['p'],['s']], [['all']]],
+    #                             path=path
+    # )
 
-    '''Ti_8_dos = DOS_visualize(files=ads_files,
-                                Atoms=[['Ti_8'], ['Ti_8']],
-                                orbitals=[[['dxy','dxz','dyz','dz2','dx2-y2']], [['dxy','dxz','dyz','dz2','dx2-y2']]],
-                                path=path)
+    # TaB_dos = DOS_visualize(files=TaB_file,
+    #                         Atoms=[['Ta_4','Ta_12', 'Ta_8', 'Ta_16'],['Ta_4','Ta_12', 'Ta_8', 'Ta_16','N'],['Ta_4','Ta_12', 'Ta_8', 'Ta_16','N','H'],
+    #                                ['Ta_4','Ta_12', 'Ta_8', 'Ta_16','N','H'],['Ta_4','Ta_12', 'Ta_8', 'Ta_16','N','H']],
+    #                         orbitals=[[['d'],['d'],['d'],['d']], [['d'],['d'],['d'],['d'],['p']], [['d'],['d'],['d'],['d'],['p'],['s']],
+    #                                   [['d'],['d'],['d'],['d'],['p'],['s']],[['d'],['d'],['d'],['d'],['p'],['s']]],
+    #                         path=path
+    # )
+    # Ti_8_dos = DOS_visualize(files=ads_files,
+    #                             Atoms=[['Ti_8'], ['Ti_8']],
+    #                             orbitals=[[['dxy','dxz','dyz','dz2','dx2-y2']], [['dxy','dxz','dyz','dz2','dx2-y2']]],
+    #                             path=path)
 
-    Ti_7_dos = DOS_visualize(files=ads_files,
-                                Atoms=[['Ti_7'], ['Ti_7']],
-                                orbitals=[[['dxy','dxz','dyz','dz2','dx2-y2']], [['dxy','dxz','dyz','dz2','dx2-y2']]],
-                                path=path)
+    # Ti_7_dos = DOS_visualize(files=ads_files,
+    #                             Atoms=[['Ti_7'], ['Ti_7']],
+    #                             orbitals=[[['dxy','dxz','dyz','dz2','dx2-y2']], [['dxy','dxz','dyz','dz2','dx2-y2']]],
+    #                             path=path)
 
-    ads_dos = DOS_visualize(files=ads_files,
-                                Atoms=[['Ti_8'], ['Ti_8']],
-                                orbitals=[[['dxy','dxz','dyz','dz2','dx2-y2'],['dxy','dxz','dyz','dz2','dx2-y2']], [['dxy','dxz','dyz','dz2','dx2-y2'],['dxy','dxz','dyz','dz2','dx2-y2']]],
-                                path=path)
-    surf_dos = DOS_visualize(files=surf_files,
-                             Atoms=[['Ti','Ti_7','Ti_8'], ['Ti','Ti_7','Ti_8']],
-                                orbitals=[[['all'],['all'], ['all']], [['all'], ['all'], ['all']]],
-                                path=path)
-    endon_dos = DOS_visualize(files=endon_files,
-                                Atoms=[['N_2', 'N_1','Ti_7','Ti_8'], ['N_2', 'N_1','Ti_7','Ti_8']],
-                                orbitals=[[['p'], ['p'],['d'],['d']], [['p'], ['p'],['d'],['d']]],
-                                path=path)'''
+    # ads_dos = DOS_visualize(files=ads_files,
+    #                             Atoms=[['Ti_8'], ['Ti_8']],
+    #                             orbitals=[[['dxy','dxz','dyz','dz2','dx2-y2'],['dxy','dxz','dyz','dz2','dx2-y2']], [['dxy','dxz','dyz','dz2','dx2-y2'],['dxy','dxz','dyz','dz2','dx2-y2']]],
+    #                             path=path)
+                                
+    # surf_dos = DOS_visualize(files=surf_files,
+    #                          Atoms=[['Ti','C'], ['Ti','Ti_7','Ti_8']],
+    #                             orbitals=[[['all'],['all'], ['all']], [['all'], ['all'], ['all']]],
+    #                             path=path)
+                             
+    # endon_dos = DOS_visualize(files=endon_files,
+    #                             Atoms=[['N_2', 'N_1','Ti_7','Ti_8'], ['N_2', 'N_1','Ti_7','Ti_8']],
+    #                             orbitals=[[['p'], ['p'],['d'],['d']], [['p'], ['p'],['d'],['d']]],
+    #                             path=path)
+
+
+    # HfP_dos  = DOS_visualize(files=["jpdos_HfP_NH3_0V.json"],
+    #                             Atoms=[['N_2', 'N_1','Ti_7','Ti_8'] ],
+    #                             orbitals=[[['p'], ['p'],['d'],['d']], [['p'], ['p'],['d'],['d']]],
+    #                             path=path)
+
+    TiC_dos = DOS_visualize(files=["jpdos_TiC_N_0V.json","jpdos_TiC_NH_0V.json","jpdos_TiC_NH2_0V.json","jpdos_TiC_NH3_0V.json"],
+                            Atoms=[['Ti_15','Ti_16','Ti_7','Ti_8','N_1'], ['Ti_15','Ti_16','Ti_7','Ti_8','N_1','H_1'],['Ti_15','Ti_16','Ti_7','Ti_8','N_1','H_1','H_2'],['Ti_15','Ti_16','Ti_7','Ti_8','N_1','H_1','H_2','H_3']],
+                            orbitals=[[['d'],['d'],['d'],['d'],['p','s']], [['d'],['d'],['d'],['d'],['p','s'],['s']], [['d'],['d'],['d'],['d'],['p','s'],['s'],['s']], [['d'],['d'],['d'],['d'],['p','s'],['s'],['s'],['s']]],
+                            path=path)
+    # TiC_surf_dos = DOS_visualize(files=["jpdos_surf_0V.json"],
+    #                             Atoms=[[]]
+    
+    
+    # )
 
 # Plotting
     
-    Ti_sideon_dos.plot_dos(save=True,
-                            savename=os.path.join(path,'sideon_pdos'),
-                            dens_lim=[[-100,100],[-100,100]],
-                            colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
-                            ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
-                            elim=[-8,1.5],smear=0.1
-                            # legend=False
-    )
+    # Ti_sideon_dos.plot_dos(save=True,
+    #                         savename=os.path.join(path,'sideon_pdos'),
+    #                         dens_lim=[[-100,100],[-100,100]],
+    #                         colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                         ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
+    #                         elim=[-8,1.5],smear=0.1
+    #                         # legend=False
+    # )
 
 
                                
@@ -338,32 +368,63 @@ if __name__ == '__main__':
                             ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
                             elim=[-8,1.5],smear=0.1
                             # legend=False
-                            )
+                            )'''
     
-    endon_dos.plot_dos(save=True, 
-                      savename=os.path.join(path,'metal_only_endon_pdos'),
-                        dens_lim=[[-100,100],[-100,100]],
-                        colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
-                            ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
-                        elim=[-8,1.5],smear=0.1
-                        # legend=False
-                        )'''
+    # endon_dos.plot_dos(save=True, 
+    #                   savename=os.path.join(path,'metal_only_endon_pdos'),
+    #                     dens_lim=[[-100,100],[-100,100]],
+    #                     colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                         ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
+    #                     elim=[-8,1.5],smear=0.1
+    #                     # legend=False
+    #                     )
 
-    V_dos.plot_dos(save=True,
-                    savename=os.path.join(path,'V_pdos'),
-                    dens_lim=[[-100,100],[-100,100]],
-                        colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
-                            ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
-                        elim=[-8,1.5],smear=0.1
-                        # legend=False
-    )
+    # V_dos.plot_dos(save=True,
+    #                 savename=os.path.join(path,'V_pdos'),
+    #                 dens_lim=[[-100,100],[-100,100]],
+    #                     colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                         ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
+    #                     elim=[-8,1.5],smear=0.1
+    #                     # legend=False
+    # )
 
-    V_N2_dos.plot_dos(save=True,
-                      savename=os.path.join(path,'V_N2_pdos'),
-                    dens_lim=[[-50,50],[-50,50]],
-                        colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
-                            ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
-                        elim=[-8,1.5],smear=0.1
-                        # legend=False
-    )
-                      
+    # V_N2_dos.plot_dos(save=True,
+    #                   savename=os.path.join(path,'V_N2_pdos'),
+    #                 dens_lim=[[-50,50],[-50,50]],
+    #                     colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                         ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
+    #                     elim=[-8,1.5],smear=0.1
+    #                     # legend=False
+    # )
+
+    # Ti_NH_dos.plot_dos(save=True,
+    #                     savename=os.path.join(path,'Ti_NH_pdos'),
+    #                     dens_lim=[[-50,50],[-50,50]],
+    #                         colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                             ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                             ['#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']],
+    #                         elim=[-8,1.5],smear=0.1
+    #                         # legend=False
+    #     )
+
+    # TaB_dos.plot_dos(save=True,
+    #                  savename=os.path.join(path,'TaB_pdos'),
+    #                  dens_lim=[[-50,50],[-50,50]],
+    #                  colors=[['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                          ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                          ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                          ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522'],
+    #                          ['#FF1F5B','#FF1F5B','#00CD6C','#00CD6C','#009ADE','#009ADE','#AF58BA','#AF58BA','#FFC61E','#FFC61E','#F28522','#F28522']]   ,
+    #                          elim=[-8,1.5],smear=0.1
+    # )    
+    TiC_dos.plot_dos(save=True,
+                    savename=os.path.join(path,'TiC_NHx_pdos_renumber'),
+                    dens_lim=[[-50,50],[-50,50],[-50,50],[-50,50]],
+                    colors=[['#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#FFC61E','#FFC61E','#FFC61E','#FFC61E','#F28522','#F28522','#F28522','#F28522'],
+                                ['#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#FFC61E','#FFC61E','#F28522','#FFC61E','#FFC61E','#F28522','#F28522','#F28522'],
+                                ['#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#FFC61E','#FFC61E','#F28522','#FFC61E','#FFC61E','#F28522','#F28522','#F28522','#F28522','#F28522'],
+                                ['#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#00CD6C','#FFC61E','#FFC61E','#F28522','#FFC61E','#FFC61E','#F28522','#F28522','#F28522','#F28522','#F28522','#F28522','#F28522']],
+                    elim=[-10,5],smear=0.1
+)
+
+                 

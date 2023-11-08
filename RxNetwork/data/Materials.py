@@ -11,8 +11,8 @@ class Material:
         self.energies = {}
 
     def get_FED_energy(self, surface:str, bias:str, referenced="final"):
-        pass
-        '''
+            pass
+            '''
         if self.data.check_surface_convergence(surface, bias) == False:
                 print(f"no converged surfaces for {surface} at {bias}")
                 return None

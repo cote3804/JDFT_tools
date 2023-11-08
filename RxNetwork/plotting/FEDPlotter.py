@@ -27,14 +27,17 @@ class FED_plotter:
                                         "H2": (2,0)},
                                 }
     
-    def plot(self, surface:str, bias:str, color="#f00000", linewidth=1, graph_objects=None):
+    def plot(self, surface:str, bias:str, color="#f00000", linewidth=1, graph_objects=None, label_str=None):
         '''
         graph_objects is a tuple of (fig, ax) that can be passed through to add multiple plots to the same axis
         '''
         reaction = Reaction(self.reaction)
         initial_state, final_state = reaction.terminal_to_states()
         custom_line = [Line2D([0], [0], color=color, lw=4)]
-        custom_label = f"{surface.split('_')[0]} ({surface.split('_')[1]}) {bias}"
+        if label_str == None:
+            custom_label = f"{surface.split('_')[0]} ({surface.split('_')[1]}) {bias}"
+        elif label_str != None:
+            custom_label = label_str
         state_width = 1
         connector_width = 1/2
         ticks = []
@@ -46,7 +49,7 @@ class FED_plotter:
 
 
         if graph_objects == None:
-            fig, ax = plt.subplots(dpi=300, figsize=(10,4))
+            fig, ax = plt.subplots(dpi=300, figsize=(10,5))
         elif graph_objects != None: #ability to pass through an axis for adding multiple plots
             fig, ax = graph_objects 
 
